@@ -56,6 +56,38 @@ def api_tipos_hardware():
 
     return jsonify({'tipos': sorted(tipos)})
 
+@hardware_bp.route('/api/hardware/por-tipo/<tipo>')
+def api_hardware_por_tipo(tipo):
+    """API para obtener hardware filtrado estrictamente por tipo"""
+    try:
+        componentes = Hardware.query.filter(Hardware.tipo.ilike(tipo)).all()
+        resultados = []
+        for c in componentes:
+            try:
+                resultados.append({
+                    'id': c.id,
+                    'tipo': c.tipo,
+                    'marca': c.marca,
+                    'modelo': c.modelo,
+                    'precio': c.precio,
+                    'descripcion': c.descripcion,
+                    'imagen': c.imagen,
+                    'especificaciones': c.get_especificaciones(),
+                    'stock': c.stock,
+                    'benchmark_score': c.benchmark_score or 0,
+                    'socket': c.socket or '',
+                    'vram_gb': c.vram_gb or 0,
+                    'cores': c.cores or 0,
+                    'threads': c.threads or 0,
+                })
+            except Exception as e:
+                current_app.logger.error(f'Error procesando componente {c.id}: {str(e)}')
+                continue
+        return jsonify({'resultados': resultados})
+    except Exception as e:
+        current_app.logger.error(f'Error en api_hardware_por_tipo: {str(e)}')
+        return jsonify({'error': str(e), 'resultados': []}), 500
+
 @hardware_bp.route('/api/hardware/buscar')
 def api_buscar_hardware():
     """API para buscar hardware"""

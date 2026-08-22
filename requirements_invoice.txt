@@ -1,4 +1,0 @@
-# Dependencias para el sistema de facturación
-reportlab>=4.0.0
-qrcode[pil]>=7.4.2
-Pillow>=10.0.0

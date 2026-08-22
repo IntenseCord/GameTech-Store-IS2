@@ -3,11 +3,11 @@
 {% block title %}Panel de Administración - GameTech Store{% endblock %}
 
 {% block content %}
-<div class="container-fluid mt-4">
+<div class="container-fluid admin-section">
     <div class="row">
         <!-- Sidebar -->
-        <div class="col-md-2">
-            <div class="list-group">
+        <div class="col-md-2 mb-4">
+            <div class="list-group sticky-top" style="top: 20px;">
                 <a href="{{ url_for('admin.dashboard') }}" class="list-group-item list-group-item-action {% if request.endpoint == 'admin.dashboard' %}active{% endif %}">
                     <i class="fas fa-tachometer-alt me-2"></i>Dashboard
                 </a>
@@ -39,106 +39,141 @@
                 {% endif %}
             {% endwith %}
 
-            <div class="card shadow">
-                <div class="card-body">
-                    <div class="row mb-4">
-                        <div class="col-md-3">
-                            <div class="card bg-primary text-white">
-                                <div class="card-body">
-                                    <h5 class="card-title">Usuarios</h5>
-                                    <p class="card-text display-6">{{ stats.usuarios }}</p>
-                                </div>
-                            </div>
+            <!-- Tarjetas de estadísticas -->
+            <div class="row mb-4">
+                <div class="col-md-3 mb-3">
+                    <div class="stat-card stat-card-users">
+                        <div class="stat-icon">
+                            <i class="fas fa-users"></i>
                         </div>
-                        <div class="col-md-3">
-                            <div class="card bg-success text-white">
-                                <div class="card-body">
-                                    <h5 class="card-title">Juegos</h5>
-                                    <p class="card-text display-6">{{ stats.juegos }}</p>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="col-md-3">
-                            <div class="card bg-info text-white">
-                                <div class="card-body">
-                                    <h5 class="card-title">Hardware</h5>
-                                    <p class="card-text display-6">{{ stats.hardware }}</p>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="col-md-3">
-                            <div class="card bg-warning text-white">
-                                <div class="card-body">
-                                    <h5 class="card-title">Órdenes</h5>
-                                    <p class="card-text display-6">{{ stats.ordenes }}</p>
-                                </div>
-                            </div>
+                        <div class="stat-content">
+                            <h6>Usuarios</h6>
+                            <p class="stat-number">{{ stats.usuarios }}</p>
                         </div>
                     </div>
+                </div>
+                <div class="col-md-3 mb-3">
+                    <div class="stat-card stat-card-games">
+                        <div class="stat-icon">
+                            <i class="fas fa-gamepad"></i>
+                        </div>
+                        <div class="stat-content">
+                            <h6>Juegos</h6>
+                            <p class="stat-number">{{ stats.juegos }}</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-3 mb-3">
+                    <div class="stat-card stat-card-hardware">
+                        <div class="stat-icon">
+                            <i class="fas fa-microchip"></i>
+                        </div>
+                        <div class="stat-content">
+                            <h6>Hardware</h6>
+                            <p class="stat-number">{{ stats.hardware }}</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-3 mb-3">
+                    <div class="stat-card stat-card-orders">
+                        <div class="stat-icon">
+                            <i class="fas fa-shopping-cart"></i>
+                        </div>
+                        <div class="stat-content">
+                            <h6>Órdenes</h6>
+                            <p class="stat-number">{{ stats.ordenes }}</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
 
-                    <div class="row">
-                        <div class="col-md-6">
-                            <h4>Órdenes Recientes</h4>
+            <!-- Sección de tablas -->
+            <div class="row">
+
+                <div class="col-md-6">
+                    <div class="card shadow">
+                        <div class="card-header">
+                            <h5 class="mb-0"><i class="fas fa-receipt me-2"></i>Órdenes Recientes</h5>
+                        </div>
+                        <div class="card-body p-0">
                             <div class="table-responsive">
-                                <table class="table table-hover">
+                                <table class="table table-hover mb-0">
                                     <thead>
                                         <tr>
-                                            <th>ID</th>
+                                            <th class="text-center">ID</th>
                                             <th>Usuario</th>
-                                            <th>Total</th>
-                                            <th>Estado</th>
-                                            <th>Fecha</th>
+                                            <th class="text-right">Total</th>
+                                            <th class="text-center">Estado</th>
+                                            <th class="text-center">Fecha</th>
                                         </tr>
                                     </thead>
                                     <tbody>
-                                        {% for orden in stats.ordenes_recientes %}
-                                        <tr>
-                                            <td>#{{ orden.id }}</td>
-                                            <td>{{ orden.user.username }}</td>
-                                            <td>${{ "%.2f"|format(orden.total) }}</td>
-                                            <td>
-                                                {% if orden.status == 'completed' %}
-                                                    <span class="badge bg-success">Completada</span>
-                                                {% elif orden.status == 'pending' %}
-                                                    <span class="badge bg-warning">Pendiente</span>
-                                                {% else %}
-                                                    <span class="badge bg-danger">Cancelada</span>
-                                                {% endif %}
-                                            </td>
-                                            <td>{{ orden.created_at.strftime('%d/%m/%Y') }}</td>
-                                        </tr>
-                                        {% endfor %}
+                                        {% if stats.ordenes_recientes %}
+                                            {% for orden in stats.ordenes_recientes %}
+                                            <tr>
+                                                <td class="text-center"><strong>#{{ orden.id }}</strong></td>
+                                                <td><i class="fas fa-shopping-bag me-2"></i>{{ orden.user.username }}</td>
+                                                <td class="text-right"><strong>${{ "%.2f"|format(orden.total) }}</strong></td>
+                                                <td class="text-center">
+                                                    {% if orden.status == 'completed' %}
+                                                        <span class="badge bg-success"><i class="fas fa-check me-1"></i>Completada</span>
+                                                    {% elif orden.status == 'pending' %}
+                                                        <span class="badge bg-warning"><i class="fas fa-clock me-1"></i>Pendiente</span>
+                                                    {% else %}
+                                                        <span class="badge bg-danger"><i class="fas fa-times me-1"></i>Cancelada</span>
+                                                    {% endif %}
+                                                </td>
+                                                <td class="text-center"><small>{{ orden.created_at.strftime('%d/%m/%Y') }}</small></td>
+                                            </tr>
+                                            {% endfor %}
+                                        {% else %}
+                                            <tr>
+                                                <td colspan="5" class="text-center py-4"><i class="fas fa-inbox text-muted me-2"></i>Sin órdenes recientes</td>
+                                            </tr>
+                                        {% endif %}
                                     </tbody>
                                 </table>
                             </div>
                         </div>
-                        <div class="col-md-6">
-                            <h4>Usuarios Recientes</h4>
+                    </div>
+                </div>
+                <div class="col-md-6">
+                    <div class="card shadow">
+                        <div class="card-header">
+                            <h5 class="mb-0"><i class="fas fa-user-plus me-2"></i>Usuarios Recientes</h5>
+                        </div>
+                        <div class="card-body p-0">
                             <div class="table-responsive">
-                                <table class="table table-hover">
+                                <table class="table table-hover mb-0">
                                     <thead>
                                         <tr>
                                             <th>Usuario</th>
                                             <th>Email</th>
-                                            <th>Fecha Registro</th>
-                                            <th>Rol</th>
+                                            <th class="text-center">Registro</th>
+                                            <th class="text-center">Rol</th>
                                         </tr>
                                     </thead>
                                     <tbody>
-                                        {% for usuario in stats.usuarios_recientes %}
-                                        <tr>
-                                            <td>{{ usuario.username }}</td>
-                                            <td>{{ usuario.email }}</td>
-                                            <td>{{ usuario.created_at.strftime('%d/%m/%Y') }}</td>
-                                            <td>
-                                                {% if usuario.is_admin %}
-                                                    <span class="badge bg-primary">Admin</span>
-                                                {% else %}
-                                                    <span class="badge bg-secondary">Usuario</span>
-                                                {% endif %}
-                                            </td>
-                                        </tr>
-                                        {% endfor %}
+                                        {% if stats.usuarios_recientes %}
+                                            {% for usuario in stats.usuarios_recientes %}
+                                            <tr>
+                                                <td><i class="fas fa-user-circle me-2"></i>{{ usuario.username }}</td>
+                                                <td><small>{{ usuario.email }}</small></td>
+                                                <td class="text-center"><small>{{ usuario.created_at.strftime('%d/%m/%Y') }}</small></td>
+                                                <td class="text-center">
+                                                    {% if usuario.is_admin %}
+                                                        <span class="badge bg-primary"><i class="fas fa-crown me-1"></i>Admin</span>
+                                                    {% else %}
+                                                        <span class="badge bg-secondary"><i class="fas fa-user me-1"></i>Usuario</span>
+                                                    {% endif %}
+                                                </td>
+                                            </tr>
+                                            {% endfor %}
+                                        {% else %}
+                                            <tr>
+                                                <td colspan="4" class="text-center py-4"><i class="fas fa-inbox text-muted me-2"></i>Sin usuarios recientes</td>
+                                            </tr>
+                                        {% endif %}
                                     </tbody>
                                 </table>
                             </div>

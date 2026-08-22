@@ -72,7 +72,7 @@ class Game(db.Model):
     nombre = db.Column(db.String(200), nullable=False, index=True)
     descripcion = db.Column(db.Text, nullable=False)
     precio = db.Column(db.Float, nullable=False)
-    imagen = db.Column(db.String(300))
+    imagen = db.Column(db.String(5000))  # Aumentado de 300 a 1000 para soportar URLs largas/base64
     genero = db.Column(db.String(50), index=True)
     desarrollador = db.Column(db.String(100))
     fecha_lanzamiento = db.Column(db.DateTime)
@@ -84,11 +84,21 @@ class Game(db.Model):
     
     def get_requisitos_minimos(self):
         """Obtener requisitos mínimos como dict"""
-        return json.loads(self.requisitos_minimos) if self.requisitos_minimos else {}
-    
+        if not self.requisitos_minimos or not self.requisitos_minimos.strip():
+            return {}
+        try:
+            return json.loads(self.requisitos_minimos)
+        except (json.JSONDecodeError, ValueError):
+            return {'Requisitos': self.requisitos_minimos}
+
     def get_requisitos_recomendados(self):
         """Obtener requisitos recomendados como dict"""
-        return json.loads(self.requisitos_recomendados) if self.requisitos_recomendados else {}
+        if not self.requisitos_recomendados or not self.requisitos_recomendados.strip():
+            return {}
+        try:
+            return json.loads(self.requisitos_recomendados)
+        except (json.JSONDecodeError, ValueError):
+            return {'Requisitos': self.requisitos_recomendados}
     
     @classmethod
     def get_all_games(cls):
@@ -128,6 +138,21 @@ class Game(db.Model):
 
         return juegos_compatibles
     
+    @classmethod
+    def search_games(cls, query):
+        """Buscar juegos por nombre, descripción o desarrollador"""
+        if not query:
+            return []
+        
+        query_lower = query.lower()
+        return cls.query.filter(
+            or_(
+                cls.nombre.ilike(f'%{query}%'),
+                cls.descripcion.ilike(f'%{query}%'),
+                cls.desarrollador.ilike(f'%{query}%')
+            )
+        ).all()
+    
     def to_dict(self):
         """Convertir a diccionario"""
         return {
@@ -158,8 +183,8 @@ class Hardware(db.Model):
     modelo = db.Column(db.String(200), nullable=False)
     precio = db.Column(db.Float, nullable=False)
     descripcion = db.Column(db.Text)
-    imagen = db.Column(db.String(300))
-    especificaciones = db.Column(db.Text)  # JSON string
+    imagen = db.Column(db.String(10000)) 
+    especificaciones = db.Column(db.Text)  
     stock = db.Column(db.Integer, default=0)
     
     # Campos para análisis de rendimiento

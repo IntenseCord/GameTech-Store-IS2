@@ -32,21 +32,37 @@ async function analyzeHardware() {
     showLoading(true);
     hideResults();
     
+    const selectedComponents = {
+        cpu_id: Number.parseInt(cpuId),
+        gpu_id: Number.parseInt(gpuId),
+        ram_id: Number.parseInt(ramId)
+    };
+    
+    // Validar que los IDs sean válidos
+    if (!selectedComponents.cpu_id || !selectedComponents.gpu_id || !selectedComponents.ram_id) {
+        showAlert('Componentes inválidos. Por favor intenta de nuevo.', 'danger');
+        showLoading(false);
+        return;
+    }
+    
     try {
         const response = await fetch('/api/analizar-hardware', {
             method: 'POST',
             headers: {
-                'Content-Type': 'application/json'
+                'Content-Type': 'application/json',
+                'X-CSRFToken': getCSRFToken() || ''
             },
-            body: JSON.stringify({
-                cpu_id: Number.parseInt(cpuId),
-                gpu_id: Number.parseInt(gpuId),
-                ram_id: Number.parseInt(ramId)
+            body: JSON.stringify(selectedComponents)
             })
         });
         
         if (!response.ok) {
-            throw new Error('Error en la respuesta del servidor');
+            try {
+                const errorData = await response.json();
+                throw new Error(errorData.error || `Error: ${response.status} ${response.statusText}`);
+            } catch (e) {
+                throw new Error(`Error en la respuesta del servidor: ${response.status}`);
+            }
         }
         
         const data = await response.json();
@@ -59,8 +75,8 @@ async function analyzeHardware() {
         }
         
     } catch (error) {
-        console.error('Error:', error);
-        showAlert('Error al conectar con el servidor. Por favor intenta de nuevo.', 'danger');
+        console.error('Error completo:', error);
+        showAlert(`Error: ${error.message || 'Error al conectar con el servidor. Por favor intenta de nuevo.'}`, 'danger');
     } finally {
         showLoading(false);
     }
@@ -363,3 +379,30 @@ function showAlert(message, type = 'info') {
         alertDiv.remove();
     }, 5000);
 }
+
+/**
+ * Obtener token CSRF del DOM
+ */
+function getCSRFToken() {
+    // Buscar en meta tag
+    const token = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
+    if (token) return token;
+    
+    // Buscar en input hidden
+    const input = document.querySelector('input[name="csrf_token"]');
+    if (input) return input.value;
+    
+    // Buscar en cookie
+    const name = 'csrf_token=';
+    const decodedCookie = decodeURIComponent(document.cookie);
+    const cookieArray = decodedCookie.split(';');
+    for (let cookie of cookieArray) {
+        cookie = cookie.trim();
+        if (cookie.indexOf(name) === 0) {
+            return cookie.substring(name.length);
+        }
+    }
+    
+    return '';
+}
+

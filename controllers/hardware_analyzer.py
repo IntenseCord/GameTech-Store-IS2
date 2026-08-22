@@ -28,6 +28,9 @@ def analyze_hardware():
     try:
         data = request.get_json()
         
+        if not data:
+            return jsonify({'error': 'No se recibieron datos'}), 400
+        
         cpu_id = data.get('cpu_id')
         gpu_id = data.get('gpu_id')
         ram_id = data.get('ram_id')
@@ -37,24 +40,46 @@ def analyze_hardware():
             return jsonify({'error': 'Faltan componentes'}), 400
         
         # Obtener componentes
-        cpu = Hardware.get_hardware_by_id(cpu_id)
-        gpu = Hardware.get_hardware_by_id(gpu_id)
-        ram = Hardware.get_hardware_by_id(ram_id)
+        cpu = Hardware.query.get(cpu_id)
+        gpu = Hardware.query.get(gpu_id)
+        ram = Hardware.query.get(ram_id)
         
         if not all([cpu, gpu, ram]):
-            return jsonify({'error': 'Componentes no encontrados'}), 404
+            return jsonify({'error': 'Uno o más componentes no encontrados'}), 404
+        
+        # Validar tipos
+        if cpu.tipo != 'CPU' or gpu.tipo != 'GPU' or ram.tipo != 'RAM':
+            return jsonify({'error': 'Tipos de componentes incorrectos'}), 400
         
         # 1. Calcular puntuación del sistema
         system_score = calculate_system_score(cpu, gpu, ram)
         
         # 2. Detectar cuellos de botella
-        bottlenecks = BottleneckDetector.detect(cpu, gpu, ram)
+        try:
+            bottlenecks = BottleneckDetector.detect(cpu, gpu, ram)
+        except Exception as e:
+            print(f"Error detecting bottleneck: {str(e)}")
+            bottlenecks = {'has_bottleneck': False, 'recommendations': []}
         
         # 3. Analizar compatibilidad con juegos
-        games_analysis = analyze_game_compatibility(cpu, gpu, ram)
+        try:
+            games_analysis = analyze_game_compatibility(cpu, gpu, ram)
+        except Exception as e:
+            print(f"Error analyzing games: {str(e)}")
+            games_analysis = {
+                'can_run_ultra': [],
+                'can_run_high': [],
+                'can_run_medium': [],
+                'can_run_low': [],
+                'cannot_run': []
+            }
         
         # 4. Generar recomendaciones
-        recommendations = generate_recommendations(bottlenecks, system_score)
+        try:
+            recommendations = generate_recommendations(bottlenecks, system_score)
+        except Exception as e:
+            print(f"Error generating recommendations: {str(e)}")
+            recommendations = []
         
         return jsonify({
             'success': True,
@@ -65,7 +90,10 @@ def analyze_hardware():
         })
     
     except Exception as e:
-        return jsonify({'error': str(e)}), 500
+        import traceback
+        print(f"Error in analyze_hardware: {str(e)}")
+        print(traceback.format_exc())
+        return jsonify({'error': f'Error del servidor: {str(e)}'}), 500
 
 def calculate_system_score(cpu, gpu, ram):
     """Calcular puntuación general del sistema"""

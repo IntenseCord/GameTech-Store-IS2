@@ -73,20 +73,20 @@
 </section>
 
 <!-- Productos Destacados -->
-<section class="featured-products py-5" style="background: linear-gradient(to bottom, #ffffff 0%, #e9ecef 100%);">
+<section class="featured-products py-5" style="background: linear-gradient(to bottom, #f8f9fa 0%, #e9ecef 100%);">
     <div class="container">
         <div class="row mb-4">
             <div class="col">
                 <h2 class="display-5 fw-bold text-center text-dark">Productos Destacados</h2>
             </div>
         </div>
-        <div class="row g-4">
+        <div id="featured-games-container" class="featured-grid">
             <!-- Juegos Destacados -->
-            <div class="col-12">
-                <h3 class="h4 mb-3 text-dark">Juegos Más Populares</h3>
+            <div class="featured-header">
+                <h3 class="h4 mb-3 text-dark"><i class="fas fa-fire text-danger me-2"></i>Juegos Más Populares</h3>
             </div>
-            {% for juego in juegos_destacados[:3] %}
-            <div class="col-md-4">
+            {% for juego in juegos_destacados[:4] %}
+            <div class="featured-item">
                 <div class="card product-card h-100">
                     <div class="card-img-container">
                         <img src="{{ juego.imagen }}" class="card-img-top" alt="{{ juego.nombre }}">
@@ -107,13 +107,13 @@
             {% endfor %}
         </div>
 
-        <div class="row g-4 mt-4">
+        <div id="featured-hardware-container" class="featured-grid mt-5">
             <!-- Hardware Destacado -->
-            <div class="col-12">
-                <h3 class="h4 mb-3 text-dark">Hardware Recomendado</h3>
+            <div class="featured-header mt-4 mb-3 border-top pt-4">
+                <h3 class="h4 mb-3 text-dark"><i class="fas fa-microchip text-primary me-2"></i>Hardware Recomendado</h3>
             </div>
-            {% for componente in hardware_destacado[:3] %}
-            <div class="col-md-4">
+            {% for componente in hardware_destacado[:4] %}
+            <div class="featured-item">
                 <div class="card product-card h-100">
                     <div class="card-img-container">
                         <img src="{{ componente.imagen }}" class="card-img-top" alt="{{ componente.modelo }}">

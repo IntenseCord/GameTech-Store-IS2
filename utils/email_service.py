@@ -1,16 +1,11 @@
 """
 Servicio de envío de correos electrónicos
 """
-from flask_mail import Mail, Message
-from flask import render_template, url_for
+from flask_mail import Message
+from flask import render_template, url_for, current_app
+from extensions import mail
 import secrets
 from datetime import datetime, timedelta
-
-mail = Mail()
-
-def init_mail(app):
-    """Inicializar Flask-Mail con la aplicación"""
-    mail.init_app(app)
 
 def generate_verification_token():
     """Generar un token único para verificación"""
@@ -32,7 +27,7 @@ def send_verification_email(user_email, username, token):
         # Crear mensaje
         msg = Message(
             subject='Verifica tu cuenta en GameTech Store',
-            sender=('GameTech Store', 'noreply@gametechstore.com'),
+            sender=('GameTech Store', current_app.config.get('MAIL_DEFAULT_SENDER')),
             recipients=[user_email]
         )
         
@@ -80,7 +75,7 @@ def send_welcome_email(user_email, username):
     try:
         msg = Message(
             subject='¡Bienvenido a GameTech Store!',
-            sender=('GameTech Store', 'noreply@gametechstore.com'),
+            sender=('GameTech Store', current_app.config.get('MAIL_DEFAULT_SENDER')),
             recipients=[user_email]
         )
         
@@ -116,3 +111,56 @@ El equipo de GameTech Store
 def get_token_expiry():
     """Obtener fecha de expiración del token (24 horas)"""
     return datetime.now() + timedelta(hours=24)
+
+def send_order_confirmation_email(user_email, username, order):
+    """
+    Enviar correo de confirmación de compra al usuario.
+
+    Args:
+        user_email: Email del usuario
+        username: Nombre de usuario
+        order: Objeto Order con sus items
+    """
+    try:
+        items = order.items.all()
+        order_items_data = []
+        for item in items:
+            order_items_data.append({
+                'nombre': item.product_name,
+                'cantidad': item.quantity,
+                'precio': item.price,
+                'subtotal': item.get_subtotal()
+            })
+
+        msg = Message(
+            subject=f'Confirmación de compra #{order.id} - GameTech Store',
+            sender=('GameTech Store', current_app.config.get('MAIL_DEFAULT_SENDER')),
+            recipients=[user_email]
+        )
+
+        msg.html = render_template(
+            'emails/order_confirmation.html',
+            username=username,
+            order=order,
+            order_items=order_items_data,
+        )
+
+        msg.body = f"""
+Hola {username},
+
+¡Gracias por tu compra en GameTech Store!
+
+Orden #{order.id}
+{''.join([f"- {i['nombre']} x{i['cantidad']} = ${i['subtotal']:.2f}\n" for i in order_items_data])}
+Total: ${order.total:.2f}
+
+Saludos,
+El equipo de GameTech Store
+        """
+
+        mail.send(msg)
+        return True
+
+    except Exception as e:
+        print(f"Error al enviar correo de confirmación de compra: {e}")
+        return False

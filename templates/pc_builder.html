@@ -189,23 +189,8 @@
     </div>
 </div>
 
-<!-- Juegos Recomendados para tu Setup -->
-<div class="row">
-    <div class="col">
-        <div class="card">
-            <div class="card-header">
-                <h5 class="mb-0"><i class="fas fa-gamepad me-2"></i>Juegos Recomendados para tu Setup</h5>
-            </div>
-            <div class="card-body">
-                <div class="row g-3" id="recommended-games">
-                    <div class="col-12 text-center">
-                        <p class="text-muted">Completa tu configuración para ver juegos recomendados</p>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-</div>
+
+
 {% endblock %}
 
 {% block extra_js %}
@@ -234,15 +219,11 @@ document.addEventListener('DOMContentLoaded', function() {
 // Cargar datos de componentes desde el servidor
 async function loadComponentsData() {
     try {
-        const response = await fetch('/api/hardware/tipos');
-        const data = await response.json();
-        console.log('pc_builder: tipos recibidos', data);
-
-        // Para cada tipo, cargar los componentes disponibles
-        for (const tipo of data.tipos) {
-            const compResponse = await fetch(`/api/hardware/buscar?q=${tipo}`);
-            const compData = await compResponse.json();
-            componentsData[tipo] = compData.resultados;
+        const tipos = ['CPU', 'GPU', 'RAM', 'Motherboard'];
+        for (const tipo of tipos) {
+            const response = await fetch(`/api/hardware/por-tipo/${tipo}`);
+            const data = await response.json();
+            componentsData[tipo] = data.resultados || [];
             console.log(`pc_builder: cargados ${componentsData[tipo].length} componentes para tipo=${tipo}`);
         }
     } catch (error) {
@@ -315,9 +296,16 @@ function chooseComponent(tipo, componenteId) {
 function updateComponentSlot(tipo, componente) {
     const slotContent = document.getElementById(`${tipo.toLowerCase()}-content`);
 
+    if (!componente) {
+        const labels = { CPU: 'un procesador', GPU: 'una tarjeta gráfica', RAM: 'memoria RAM', Motherboard: 'una placa base' };
+        slotContent.innerHTML = `<p class="text-muted">Selecciona ${labels[tipo] || 'un componente'}</p>`;
+        return;
+    }
+
+    const imagen = componente.imagen || '/static/img/placeholder.png';
     slotContent.innerHTML = `
         <div class="d-flex align-items-center">
-            <img src="${componente.imagen}" class="img-thumbnail me-3" style="width: 50px; height: 50px;" alt="${componente.modelo}">
+            <img src="${imagen}" class="img-thumbnail me-3" style="width: 50px; height: 50px;" alt="${componente.modelo}">
             <div class="flex-grow-1">
                 <h6 class="mb-1">${componente.marca} ${componente.modelo}</h6>
                 <p class="text-primary mb-0">$${componente.precio}</p>
@@ -351,12 +339,32 @@ function updateTotalPrice() {
 function checkBuildComplete() {
     const completedComponents = Object.values(currentBuild).filter(c => c !== null).length;
     const finalizeBtn = document.getElementById('finalize-build-btn');
+    finalizeBtn.disabled = completedComponents < 3;
+    updatePerformanceLevel();
+}
 
-    if (completedComponents >= 3) { // Al menos CPU, GPU y RAM
-        finalizeBtn.disabled = false;
-    } else {
-        finalizeBtn.disabled = true;
+// Actualizar nivel de rendimiento estimado
+function updatePerformanceLevel() {
+    const cpu = currentBuild.CPU;
+    const gpu = currentBuild.GPU;
+    const ram = currentBuild.RAM;
+    if (!cpu && !gpu) {
+        document.getElementById('performance-level').textContent = 'Sin componentes';
+        return;
     }
+    const cpuScore = cpu ? (cpu.benchmark_score || 0) : 0;
+    const gpuScore = gpu ? (gpu.benchmark_score || 0) : 0;
+    const ramCap = ram && ram.especificaciones && ram.especificaciones.capacidad
+        ? Number.parseInt(ram.especificaciones.capacidad) || 8 : 8;
+    const total = (gpuScore * 0.5) + (cpuScore * 0.35) + (ramCap * 100 * 0.15);
+    let tier;
+    if (total >= 15000)      tier = 'Ultra High-End (4K)';
+    else if (total >= 10000) tier = 'High-End (1440p Ultra)';
+    else if (total >= 7000)  tier = 'Mid-High (1080p Ultra)';
+    else if (total >= 4000)  tier = 'Mid-Range (1080p Medium)';
+    else if (total > 0)      tier = 'Entry Level';
+    else                     tier = 'Sin datos de benchmark';
+    document.getElementById('performance-level').textContent = tier;
 }
 
 // Auto-recomendación
@@ -365,23 +373,26 @@ function autoRecommend() {
     const tipos = ['CPU', 'GPU', 'RAM', 'Motherboard'];
     for (const tipo of tipos) {
         if (!currentBuild[tipo]) {
+            const lista = componentsData[tipo] || [];
             let recommended;
             switch (tipo) {
                 case 'CPU':
-                    recommended = recommendCPU(budget, componentesData[tipo]);
+                    recommended = recommendCPU(budget, lista);
                     break;
                 case 'GPU':
-                    recommended = recommendGPU(budget, componentesData[tipo]);
+                    recommended = recommendGPU(budget, lista);
                     break;
                 case 'RAM':
-                    recommended = componentesData[tipo].find(c =>
+                    recommended = lista.find(c =>
                         c.especificaciones && c.especificaciones.capacidad === '16 GB'
-                    );
+                    ) || lista.find(c =>
+                        c.especificaciones && c.especificaciones.capacidad === '16GB'
+                    ) || lista[0];
                     break;
                 case 'Motherboard':
-                    recommended = componentesData[tipo].find(c =>
-                        c.socket === 'AM4' || c.socket === 'LGA 1700'
-                    );
+                    recommended = lista.find(c =>
+                        c.socket === 'AM4' || c.socket === 'LGA1700' || c.socket === 'LGA 1700'
+                    ) || lista[0];
                     break;
             }
             if (recommended) {
@@ -423,43 +434,93 @@ function updateRecommendations() {
         return;
     }
 
-    // Mostrar recomendaciones basadas en componentes seleccionados
     let recommendations = [];
 
     if (currentBuild.CPU && currentBuild.GPU) {
+        const cpuScore = currentBuild.CPU.benchmark_score || 0;
+        const gpuScore = currentBuild.GPU.benchmark_score || 0;
+        const ratio = cpuScore > 0 && gpuScore > 0 ? Math.max(cpuScore, gpuScore) / Math.min(cpuScore, gpuScore) : 1;
+        const alertType = ratio > 2 ? 'warning' : 'success';
+        const msg = ratio > 2
+            ? `Hay un desequilibrio entre tu CPU y GPU (ratio ${ratio.toFixed(1)}x). Puede haber cuello de botella.`
+            : '¡Excelente combinación! Tu CPU y GPU están bien balanceados.';
         recommendations.push(`
             <div class="col-md-6">
-                <div class="alert alert-success">
-                    <i class="fas fa-thumbs-up me-2"></i>
-                    <strong>¡Excelente combinación!</strong> Tu CPU y GPU están bien balanceados.
+                <div class="alert alert-${alertType}">
+                    <i class="fas fa-${alertType === 'warning' ? 'exclamation-triangle' : 'thumbs-up'} me-2"></i>
+                    <strong>${msg}</strong>
                 </div>
             </div>
         `);
     }
 
-    if (currentBuild.RAM && Number.parseInt(currentBuild.RAM.especificaciones.capacidad) >= 16) {
-        recommendations.push(`
-            <div class="col-md-6">
-                <div class="alert alert-info">
-                    <i class="fas fa-memory me-2"></i>
-                    <strong>Buena cantidad de RAM</strong> para gaming moderno y multitasking.
+    if (currentBuild.RAM) {
+        const ramCap = currentBuild.RAM.especificaciones && currentBuild.RAM.especificaciones.capacidad
+            ? currentBuild.RAM.especificaciones.capacidad
+            : '0';
+        const ramGb = Number.parseInt(ramCap) || 0;
+        if (ramGb >= 16) {
+            recommendations.push(`
+                <div class="col-md-6">
+                    <div class="alert alert-info">
+                        <i class="fas fa-memory me-2"></i>
+                        <strong>Buena cantidad de RAM</strong> — ${ramGb}GB es ideal para gaming moderno.
+                    </div>
                 </div>
-            </div>
-        `);
+            `);
+        } else if (ramGb > 0) {
+            recommendations.push(`
+                <div class="col-md-6">
+                    <div class="alert alert-warning">
+                        <i class="fas fa-memory me-2"></i>
+                        <strong>RAM limitada</strong> — Solo ${ramGb}GB. Se recomiendan 16GB para gaming.
+                    </div>
+                </div>
+            `);
+        }
+    }
+
+    if (recommendations.length === 0) {
+        recommendations.push(`<div class="col-12 text-center"><p class="text-muted">Agrega más componentes para ver recomendaciones.</p></div>`);
     }
 
     container.innerHTML = recommendations.join('');
 }
 
-// Finalizar build
-function finalizeBuild() {
-    const totalPrice = Object.values(currentBuild)
-        .filter(c => c !== null)
-        .reduce((sum, c) => sum + c.precio, 0);
+// Finalizar build — agregar todos los componentes al carrito
+async function finalizeBuild() {
+    const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
+    const components = Object.values(currentBuild).filter(c => c !== null);
+    const btn = document.getElementById('finalize-build-btn');
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Agregando...';
 
-    showToast(`¡Build finalizada! Total: $${totalPrice.toFixed(2)}`, 'success');
-
-    // Aquí podrías redirigir a checkout o mostrar más detalles
+    try {
+        for (const comp of components) {
+            const resp = await fetch('/carrito/agregar', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': csrfToken
+                },
+                body: JSON.stringify({
+                    product_type: 'hardware',
+                    product_id: comp.id,
+                    quantity: 1
+                })
+            });
+            if (!resp.ok && resp.status !== 400) {
+                // 400 puede ser stock insuficiente o ya en carrito — no es fatal
+                const err = await resp.json();
+                showToast(`Error con ${comp.modelo}: ${err.message || resp.statusText}`, 'danger');
+            }
+        }
+        window.location.href = '/carrito';
+    } catch (error) {
+        showToast('Error al agregar componentes al carrito', 'danger');
+        btn.disabled = false;
+        btn.innerHTML = '<i class="fas fa-shopping-cart me-2"></i>Finalizar Compra';
+    }
 }
 
 function showToast(message, type) {

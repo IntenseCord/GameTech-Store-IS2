@@ -79,13 +79,19 @@ def nuevo_juego():
     """Crear nuevo juego"""
     if request.method == 'POST':
         try:
-            # Procesar imagen
-            imagen = request.files.get('imagen')
+            # Procesar imagen - archivo o URL
             imagen_path = None
+            imagen = request.files.get('imagen')
+            imagen_url = request.form.get('imagen_url', '').strip()
+            
             if imagen and imagen.filename:
+                # Procesar archivo subido
                 filename = secure_filename(imagen.filename)
                 imagen.save(os.path.join(UPLOAD, filename))
-                imagen_path = (UPLOAD, {filename})
+                imagen_path = os.path.join('/' + UPLOAD, filename)
+            elif imagen_url:
+                # Usar URL proporcionada
+                imagen_path = imagen_url
 
             # Crear juego
             juego = Game(
@@ -118,12 +124,18 @@ def editar_juego(game_id):
     
     if request.method == 'POST':
         try:
-            # Actualizar imagen si se proporciona una nueva
+            # Actualizar imagen si se proporciona una nueva - archivo o URL
             imagen = request.files.get('imagen')
+            imagen_url = request.form.get('imagen_url', '').strip()
+            
             if imagen and imagen.filename:
+                # Procesar archivo subido
                 filename = secure_filename(imagen.filename)
                 imagen.save(os.path.join(UPLOAD, filename))
-                game.imagen = (UPLOAD, {filename})
+                game.imagen = os.path.join('/' + UPLOAD, filename)
+            elif imagen_url:
+                # Usar URL proporcionada
+                game.imagen = imagen_url
 
             # Actualizar datos
             game.nombre = request.form['nombre']
@@ -159,13 +171,19 @@ def nuevo_hardware():
     """Crear nuevo componente de hardware"""
     if request.method == 'POST':
         try:
-            # Procesar imagen
-            imagen = request.files.get('imagen')
+            # Procesar imagen - archivo o URL
             imagen_path = None
+            imagen = request.files.get('imagen')
+            imagen_url = request.form.get('imagen_url', '').strip()
+            
             if imagen and imagen.filename:
+                # Procesar archivo subido
                 filename = secure_filename(imagen.filename)
                 imagen.save(os.path.join(UPLOAD, filename))
-                imagen_path = (UPLOAD, {filename})
+                imagen_path = os.path.join('/' + UPLOAD, filename)
+            elif imagen_url:
+                # Usar URL proporcionada
+                imagen_path = imagen_url
 
             # Crear hardware
             hardware = Hardware(
@@ -196,12 +214,18 @@ def editar_hardware(hardware_id):
     
     if request.method == 'POST':
         try:
-            # Actualizar imagen si se proporciona una nueva
+            # Actualizar imagen si se proporciona una nueva - archivo o URL
             imagen = request.files.get('imagen')
+            imagen_url = request.form.get('imagen_url', '').strip()
+            
             if imagen and imagen.filename:
+                # Procesar archivo subido
                 filename = secure_filename(imagen.filename)
                 imagen.save(os.path.join(UPLOAD, filename))
-                component.imagen = (UPLOAD, {filename})
+                component.imagen = os.path.join('/' + UPLOAD, filename)
+            elif imagen_url:
+                # Usar URL proporcionada
+                component.imagen = imagen_url
 
             # Actualizar datos
             component.tipo = request.form['tipo']

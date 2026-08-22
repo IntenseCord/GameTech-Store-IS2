@@ -7,6 +7,7 @@ from flask_login import login_required, current_user
 from flask_wtf.csrf import CSRFProtect
 from database import db
 from models.database_models import CartItem, Game, Hardware, Order, OrderItem
+from utils.email_service import send_order_confirmation_email
 
 PRODUCTO_ELIMINADO = 'Producto eliminado del carrito'
 STOCK_INSUFICIENTE = 'Stock insuficiente'
@@ -225,7 +226,10 @@ def checkout():
         CartItem.query.filter_by(user_id=current_user.id).delete()
         
         db.session.commit()
-        
+
+        # Enviar correo de confirmación de compra
+        send_order_confirmation_email(current_user.email, current_user.username, order)
+
         flash(f'¡Compra realizada con éxito! Orden #{order.id}', 'success')
         return redirect(url_for('cart.orden_confirmada', order_id=order.id))
     

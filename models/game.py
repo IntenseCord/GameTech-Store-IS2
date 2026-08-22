@@ -143,6 +143,25 @@ class Game:
         return next((juego for juego in juegos if juego.id == game_id), None)
 
     @classmethod
+    def search_games(cls, query):
+        """Buscar juegos por nombre, descripción o desarrollador"""
+        if not query:
+            return []
+        
+        query_lower = query.lower()
+        juegos = cls.get_all_games()
+        resultados = []
+        
+        for juego in juegos:
+            # Buscar en nombre, descripción o desarrollador
+            if (query_lower in juego.nombre.lower() or 
+                query_lower in juego.descripcion.lower() or 
+                query_lower in juego.desarrollador.lower()):
+                resultados.append(juego)
+        
+        return resultados
+
+    @classmethod
     def get_games_by_hardware(cls, hardware_specs):
         """Obtener juegos compatibles con el hardware especificado"""
         juegos = cls.get_all_games()

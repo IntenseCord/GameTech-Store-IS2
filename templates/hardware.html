@@ -19,64 +19,54 @@
                 <a href="#cpu" class="btn btn-outline-primary" data-category="CPU">Procesadores</a>
                 <a href="#gpu" class="btn btn-outline-primary" data-category="GPU">Tarjetas Gráficas</a>
                 <a href="#ram" class="btn btn-outline-primary" data-category="RAM">Memoria RAM</a>
-                <a href="#motherboard" class="btn btn-outline-primary" data-category="Motherboard">Placas Base</a>
+                <a href="#motherboard" class="btn btn-outline-primary" data-category="MOTHERBOARD">Placas Base</a>
             </div>
         </div>
     </div>
 </div>
 
 <!-- Productos de Hardware -->
-<div class="row g-4" id="hardware-container">
+<div id="hardware-container">
     {% for componente in hardware %}
-    <div class="col-lg-3 col-md-4 col-sm-6 hardware-item" data-category="{{ componente.tipo }}">
-        <div class="card h-100 product-card">
+    <div class="hardware-item" data-category="{{ componente.tipo }}">
+        <div class="card product-card">
             <div class="card-img-container">
-                <img src="{{ componente.imagen }}" class="card-img-top" alt="{{ componente.modelo }}">
-                <div class="card-img-overlay d-flex align-items-center justify-content-center opacity-0 hover-overlay">
-                    <a href="/hardware/{{ componente.id }}" class="btn btn-primary">Ver Detalles</a>
-                </div>
-                <span class="badge bg-info position-absolute top-0 end-0 m-2">{{ componente.tipo }}</span>
+                <img src="{{ componente.imagen }}" class="card-img-top" alt="{{ componente.modelo }}" onerror="this.src='https://via.placeholder.com/200x100?text={{ componente.tipo }}'">
+                <span class="badge bg-info position-absolute top-0 end-0 m-1">{{ componente.tipo }}</span>
             </div>
-            <div class="card-body d-flex flex-column">
+            <div class="card-body">
                 <h5 class="card-title">{{ componente.marca }} {{ componente.modelo }}</h5>
-                <p class="card-text text-muted flex-grow-1">{{ componente.descripcion }}</p>
+                <p class="card-text">{{ componente.descripcion }}</p>
 
-                <!-- Especificaciones rápidas -->
-                <div class="quick-specs mb-3">
-                    {% if componente.tipo == 'CPU' %}
-                        {% set specs = componente.get_especificaciones() %}
-                        <small class="text-muted">
-                            <i class="fas fa-microchip me-1"></i>{{ specs.get('nucleos', 'N/A') }} Núcleos |
-                            <i class="fas fa-tachometer-alt me-1"></i>{{ specs.get('frecuencia_base', 'N/A') }}
-                        </small>
-                    {% elif componente.tipo == 'GPU' %}
-                        {% set specs = componente.get_especificaciones() %}
-                        <small class="text-muted">
-                            <i class="fas fa-memory me-1"></i>{{ specs.get('memoria', 'N/A') }} |
-                            <i class="fas fa-bolt me-1"></i>{{ specs.get('consumo', 'N/A') }}
-                        </small>
-                    {% elif componente.tipo == 'RAM' %}
-                        {% set specs = componente.get_especificaciones() %}
-                        <small class="text-muted">
-                            <i class="fas fa-memory me-1"></i>{{ specs.get('capacidad', 'N/A') }} |
-                            <i class="fas fa-tachometer-alt me-1"></i>{{ specs.get('frecuencia', 'N/A') }}
-                        </small>
-                    {% endif %}
+                {% if componente.tipo == 'CPU' %}
+                    {% set specs = componente.get_especificaciones() %}
+                    <div class="quick-specs">
+                        <small><i class="fas fa-microchip me-1"></i>{{ specs.get('nucleos', 'N/A') }}N</small>
+                    </div>
+                {% elif componente.tipo == 'GPU' %}
+                    {% set specs = componente.get_especificaciones() %}
+                    <div class="quick-specs">
+                        <small><i class="fas fa-memory me-1"></i>{{ specs.get('memoria', 'N/A') }}</small>
+                    </div>
+                {% elif componente.tipo == 'RAM' %}
+                    {% set specs = componente.get_especificaciones() %}
+                    <div class="quick-specs">
+                        <small><i class="fas fa-memory me-1"></i>{{ specs.get('capacidad', 'N/A') }}</small>
+                    </div>
+                {% endif %}
+            </div>
+            <div class="card-footer">
+                <div class="d-flex justify-content-between align-items-center">
+                    <span class="text-primary fw-bold" style="font-size: 0.8rem">${{ "%.0f"|format(componente.precio) }}</span>
+                    <span class="badge bg-success">Stock</span>
                 </div>
-
-                <div class="card-footer bg-transparent border-0 p-0 mt-3">
-                    <div class="d-flex justify-content-between align-items-center mb-2">
-                        <span class="h5 text-primary mb-0">${{ "%.2f"|format(componente.precio) }}</span>
-                        <span class="badge bg-success">Disponible</span>
-                    </div>
-                    <div class="d-flex gap-2">
-                        <a href="/hardware/{{ componente.id }}" class="btn btn-outline-primary flex-fill">
-                            <i class="fas fa-eye me-1"></i>Ver
-                        </a>
-                        <button class="btn btn-primary flex-fill add-to-cart-btn" data-hardware-id="{{ componente.id }}">
-                            <i class="fas fa-shopping-cart me-1"></i>Agregar
-                        </button>
-                    </div>
+                <div class="d-flex gap-1">
+                    <a href="/hardware/{{ componente.id }}" class="btn btn-outline-primary btn-sm flex-grow-1">
+                        <i class="fas fa-eye"></i>
+                    </a>
+                    <button class="btn btn-primary btn-sm flex-grow-1 add-to-cart-btn" data-hardware-id="{{ componente.id }}">
+                        <i class="fas fa-shopping-cart"></i>
+                    </button>
                 </div>
             </div>
         </div>
@@ -85,12 +75,12 @@
 </div>
 
 <!-- Configurador de PC Destacado -->
-<section class="pc-builder-highlight py-5 bg-light mt-5">
+<section class="pc-builder-highlight py-5 bg-gradient-primary text-white mt-5">
     <div class="container">
         <div class="row align-items-center">
             <div class="col-lg-8">
                 <h2 class="mb-4">¿Necesitas ayuda para armar tu PC?</h2>
-                <p class="lead text-muted mb-4">
+                <p class="lead mb-4" style="color: rgba(255,255,255,0.9);">
                     Usa nuestro configurador de PC inteligente para encontrar los componentes perfectos para tu presupuesto y necesidades gaming.
                 </p>
                 <div class="features-list mb-4">
@@ -99,11 +89,11 @@
                         <span>Recomendaciones personalizadas basadas en tu presupuesto</span>
                     </div>
                     <div class="d-flex align-items-center mb-2">
-                        <i class="fas fa-check text-success me-3"></i>
+                        <i class="fas fa-check text-warning me-3"></i>
                         <span>Verificación automática de compatibilidad</span>
                     </div>
                     <div class="d-flex align-items-center mb-2">
-                        <i class="fas fa-check text-success me-3"></i>
+                        <i class="fas fa-check text-warning me-3"></i>
                         <span>Comparación de rendimiento entre componentes</span>
                     </div>
                 </div>
@@ -133,7 +123,7 @@
                     <div class="guide-icon mb-3">
                         <i class="fas fa-brain fa-3x text-primary"></i>
                     </div>
-                    <h4>Considera tu presupuesto</h4>
+                    <h4 class="text-dark">Considera tu presupuesto</h4>
                     <p class="text-muted">
                         Define cuánto estás dispuesto a invertir. Nuestros componentes están categorizados por rangos de precio para facilitar tu elección.
                     </p>
@@ -144,7 +134,7 @@
                     <div class="guide-icon mb-3">
                         <i class="fas fa-gamepad fa-3x text-primary"></i>
                     </div>
-                    <h4>Piensa en los juegos que juegas</h4>
+                    <h4 class="text-dark">Piensa en los juegos que juegas</h4>
                     <p class="text-muted">
                         ¿Juegas juegos AAA actuales o títulos más antiguos? Esto determinará los requisitos de hardware necesarios.
                     </p>
@@ -155,7 +145,7 @@
                     <div class="guide-icon mb-3">
                         <i class="fas fa-futbol fa-3x text-primary"></i>
                     </div>
-                    <h4>Planea futuras actualizaciones</h4>
+                    <h4 class="text-dark">Planea futuras actualizaciones</h4>
                     <p class="text-muted">
                         Elige componentes con margen de mejora. Una buena placa base te permitirá actualizar CPU y RAM en el futuro.
                     </p>
@@ -166,7 +156,7 @@
                     <div class="guide-icon mb-3">
                         <i class="fas fa-shield-alt fa-3x text-primary"></i>
                     </div>
-                    <h4>Verifica compatibilidad</h4>
+                    <h4 class="text-dark">Verifica compatibilidad</h4>
                     <p class="text-muted">
                         Usa nuestro verificador de compatibilidad para asegurar que todos los componentes funcionen juntos perfectamente.
                     </p>
@@ -254,13 +244,16 @@ document.addEventListener('DOMContentLoaded', function() {
     padding: 2rem;
     background: white;
     border-radius: 10px;
-    box-shadow: 0 2px 15px rgba(0,0,0,0.05);
+    border: 1px solid #e9ecef;
+    box-shadow: 0 2px 15px rgba(0,0,0,0.08);
     transition: transform 0.3s ease;
     height: 100%;
 }
 
 .guide-card:hover {
     transform: translateY(-5px);
+    border-color: var(--primary-color);
+    box-shadow: 0 8px 25px rgba(102,126,234,0.15);
 }
 
 .guide-icon {
@@ -290,6 +283,37 @@ document.addEventListener('DOMContentLoaded', function() {
     flex-shrink: 0;
 }
 
+/* Estilos específicos para Hardware */
+#hardware-container {
+    min-height: 300px;
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+    gap: 1.5rem;
+    margin-top: 2rem;
+}
+
+.hardware-item {
+    animation: fadeInUp 0.6s ease-out;
+}
+
+.quick-specs {
+    background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+    padding: 0.75rem;
+    border-radius: 8px;
+    border-left: 3px solid var(--primary-color);
+}
+
+.card-footer .btn {
+    font-size: 0.875rem;
+    padding: 0.5rem;
+}
+
+.alert-info {
+    background: linear-gradient(135deg, #e3f2fd 0%, #f3e5f5 100%);
+    border: 2px dashed var(--primary-color);
+    border-radius: 15px;
+}
+
 @media (max-width: 768px) {
     .categories-nav {
         position: static;
@@ -304,6 +328,26 @@ document.addEventListener('DOMContentLoaded', function() {
     .guide-card {
         padding: 1.5rem;
         margin-bottom: 1rem;
+    }
+
+    #hardware-container {
+        grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+        gap: 1rem;
+    }
+
+    .card-img-container {
+        height: 150px;
+    }
+}
+
+@media (max-width: 480px) {
+    #hardware-container {
+        grid-template-columns: 1fr;
+    }
+
+    .categories-nav .btn {
+        font-size: 0.75rem;
+        padding: 0.4rem 0.8rem;
     }
 }
 </style>
