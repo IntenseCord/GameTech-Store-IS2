@@ -3,7 +3,7 @@ Utilidad para enviar correos electrónicos
 """
 from flask_mail import Message
 from flask import current_app, render_template_string
-from database import mail
+from extensions import mail
 import os
 
 def enviar_factura_por_email(invoice, user, pdf_path):

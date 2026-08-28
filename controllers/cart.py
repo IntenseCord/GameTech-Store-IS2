@@ -5,7 +5,7 @@ Controlador del carrito de compras
 from flask import Blueprint, render_template, request, redirect, url_for, flash, jsonify
 from flask_login import login_required, current_user
 from flask_wtf.csrf import CSRFProtect
-from database import db
+from extensions import db
 from models.database_models import CartItem, Game, Hardware, Order, OrderItem
 from utils.email_service import send_order_confirmation_email
 
@@ -19,12 +19,18 @@ cart_bp = Blueprint('cart', __name__)
 @login_required
 def ver_carrito():
     """Ver el carrito de compras"""
-    cart_items = CartItem.query.filter_by(user_id=current_user.id).all()
-    
-    # Calcular total
-    total = sum(item.get_subtotal() for item in cart_items)
-    
-    return render_template('cart/carrito.html', cart_items=cart_items, total=total)
+    try:
+        cart_items = CartItem.query.filter_by(user_id=current_user.id).all()
+        
+        # Calcular total
+        total = sum(item.get_subtotal() for item in cart_items)
+        
+        return render_template('cart/carrito.html', cart_items=cart_items, total=total)
+    except Exception as e:
+        from flask import current_app
+        current_app.logger.error(f'Error en ver_carrito: {str(e)}')
+        flash('Error al cargar el carrito', 'danger')
+        return redirect(url_for('index'))
 
 @cart_bp.route('/carrito/agregar', methods=['POST'])
 @login_required
@@ -116,140 +122,176 @@ def responder_exito(mensaje):
 @login_required
 def actualizar_cantidad(item_id):
     """Actualizar cantidad de un item en el carrito"""
-    cart_item = CartItem.query.get_or_404(item_id)
-    
-    # Verificar que el item pertenece al usuario
-    if cart_item.user_id != current_user.id:
-        flash('No tienes permiso para modificar este item', 'danger')
-        return redirect(url_for(VER_CARRITO))
-    
-    quantity = int(request.form.get('quantity', 1))
-    
-    if quantity <= 0:
-        db.session.delete(cart_item)
-        flash(PRODUCTO_ELIMINADO, 'info')
-    else:
-        # Verificar stock
-        product = cart_item.get_product()
-        if product and product.stock >= quantity:
-            cart_item.quantity = quantity
-            flash('Cantidad actualizada', 'success')
+    try:
+        cart_item = CartItem.query.get_or_404(item_id)
+        
+        # Verificar que el item pertenece al usuario
+        if cart_item.user_id != current_user.id:
+            flash('No tienes permiso para modificar este item', 'danger')
+            return redirect(url_for(VER_CARRITO))
+        
+        quantity = int(request.form.get('quantity', 1))
+        
+        if quantity <= 0:
+            db.session.delete(cart_item)
+            flash(PRODUCTO_ELIMINADO, 'info')
         else:
-            flash(STOCK_INSUFICIENTE, 'danger')
-    
-    db.session.commit()
-    return redirect(url_for(VER_CARRITO))
+            # Verificar stock
+            product = cart_item.get_product()
+            if product and product.stock >= quantity:
+                cart_item.quantity = quantity
+                flash('Cantidad actualizada', 'success')
+            else:
+                flash(STOCK_INSUFICIENTE, 'danger')
+        
+        db.session.commit()
+        return redirect(url_for(VER_CARRITO))
+    except Exception as e:
+        from flask import current_app
+        db.session.rollback()
+        current_app.logger.error(f'Error en actualizar_cantidad: {str(e)}')
+        flash('Error al actualizar la cantidad', 'danger')
+        return redirect(url_for(VER_CARRITO))
 
 @cart_bp.route('/carrito/eliminar/<int:item_id>', methods=['POST'])
 @login_required
 def eliminar_del_carrito(item_id):
     """Eliminar un item del carrito"""
-    cart_item = CartItem.query.get_or_404(item_id)
-    
-    # Verificar que el item pertenece al usuario
-    if cart_item.user_id != current_user.id:
+    try:
+        cart_item = CartItem.query.get_or_404(item_id)
+        
+        # Verificar que el item pertenece al usuario
+        if cart_item.user_id != current_user.id:
+            if request.is_json:
+                return jsonify({'success': False, 'message': 'No autorizado'}), 403
+            flash('No tienes permiso para eliminar este item', 'danger')
+            return redirect(url_for(VER_CARRITO))
+        
+        db.session.delete(cart_item)
+        db.session.commit()
+        
         if request.is_json:
-            return jsonify({'success': False, 'message': 'No autorizado'}), 403
-        flash('No tienes permiso para eliminar este item', 'danger')
+            return jsonify({
+                'success': True,
+                'message': PRODUCTO_ELIMINADO,
+                'cart_count': CartItem.query.filter_by(user_id=current_user.id).count()
+            })
+        
+        flash(PRODUCTO_ELIMINADO, 'success')
         return redirect(url_for(VER_CARRITO))
-    
-    db.session.delete(cart_item)
-    db.session.commit()
-    
-    if request.is_json:
-        return jsonify({
-            'success': True,
-            'message': PRODUCTO_ELIMINADO,
-            'cart_count': CartItem.query.filter_by(user_id=current_user.id).count()
-        })
-    
-    flash(PRODUCTO_ELIMINADO, 'success')
-    return redirect(url_for(VER_CARRITO))
+    except Exception as e:
+        from flask import current_app
+        db.session.rollback()
+        current_app.logger.error(f'Error en eliminar_del_carrito: {str(e)}')
+        if request.is_json:
+            return jsonify({'success': False, 'message': 'Error al eliminar item'}), 500
+        flash('Error al eliminar el item', 'danger')
+        return redirect(url_for(VER_CARRITO))
 
 @cart_bp.route('/carrito/vaciar', methods=['POST'])
 @login_required
 def vaciar_carrito():
     """Vaciar todo el carrito"""
-    CartItem.query.filter_by(user_id=current_user.id).delete()
-    db.session.commit()
-    
-    flash('Carrito vaciado', 'info')
-    return redirect(url_for(VER_CARRITO))
+    try:
+        CartItem.query.filter_by(user_id=current_user.id).delete()
+        db.session.commit()
+        
+        flash('Carrito vaciado', 'info')
+        return redirect(url_for(VER_CARRITO))
+    except Exception as e:
+        from flask import current_app
+        db.session.rollback()
+        current_app.logger.error(f'Error en vaciar_carrito: {str(e)}')
+        flash('Error al vaciar el carrito', 'danger')
+        return redirect(url_for(VER_CARRITO))
 
 @cart_bp.route('/carrito/checkout', methods=['GET', 'POST'])
 @login_required
 def checkout():
     """Proceso de checkout"""
-    cart_items = CartItem.query.filter_by(user_id=current_user.id).all()
-    
-    if not cart_items:
-        flash('Tu carrito está vacío', 'warning')
-        return redirect(url_for(VER_CARRITO))
-    
-    if request.method == 'POST':
-        # Calcular total
+    try:
+        cart_items = CartItem.query.filter_by(user_id=current_user.id).all()
+        
+        if not cart_items:
+            flash('Tu carrito está vacío', 'warning')
+            return redirect(url_for(VER_CARRITO))
+        
+        if request.method == 'POST':
+            # Calcular total
+            total = sum(item.get_subtotal() for item in cart_items)
+            
+            # Crear orden
+            order = Order(
+                user_id=current_user.id,
+                total=total,
+                status='completed'
+            )
+            db.session.add(order)
+            db.session.flush()  # Para obtener el ID de la orden
+            
+            # Crear items de la orden y actualizar stock
+            for cart_item in cart_items:
+                product = cart_item.get_product()
+                
+                if not product or product.stock < cart_item.quantity:
+                    db.session.rollback()
+                    flash(f'Stock insuficiente para {product.nombre if hasattr(product, "nombre") else product.modelo}', 'danger')
+                    return redirect(url_for(VER_CARRITO))
+                
+                # Crear item de orden
+                order_item = OrderItem(
+                    order_id=order.id,
+                    product_type=cart_item.product_type,
+                    product_id=cart_item.product_id,
+                    product_name=product.nombre if hasattr(product, 'nombre') else f"{product.marca} {product.modelo}",
+                    quantity=cart_item.quantity,
+                    price=product.precio
+                )
+                db.session.add(order_item)
+                
+                # Actualizar stock
+                product.stock -= cart_item.quantity
+            
+            # Vaciar carrito
+            CartItem.query.filter_by(user_id=current_user.id).delete()
+            
+            db.session.commit()
+
+            # Enviar correo de confirmación de compra
+            send_order_confirmation_email(current_user.email, current_user.username, order)
+
+            flash(f'¡Compra realizada con éxito! Orden #{order.id}', 'success')
+            return redirect(url_for('cart.orden_confirmada', order_id=order.id))
+        
+        # Calcular total para mostrar
         total = sum(item.get_subtotal() for item in cart_items)
         
-        # Crear orden
-        order = Order(
-            user_id=current_user.id,
-            total=total,
-            status='completed'
-        )
-        db.session.add(order)
-        db.session.flush()  # Para obtener el ID de la orden
-        
-        # Crear items de la orden y actualizar stock
-        for cart_item in cart_items:
-            product = cart_item.get_product()
-            
-            if not product or product.stock < cart_item.quantity:
-                db.session.rollback()
-                flash(f'Stock insuficiente para {product.nombre if hasattr(product, "nombre") else product.modelo}', 'danger')
-                return redirect(url_for(VER_CARRITO))
-            
-            # Crear item de orden
-            order_item = OrderItem(
-                order_id=order.id,
-                product_type=cart_item.product_type,
-                product_id=cart_item.product_id,
-                product_name=product.nombre if hasattr(product, 'nombre') else f"{product.marca} {product.modelo}",
-                quantity=cart_item.quantity,
-                price=product.precio
-            )
-            db.session.add(order_item)
-            
-            # Actualizar stock
-            product.stock -= cart_item.quantity
-        
-        # Vaciar carrito
-        CartItem.query.filter_by(user_id=current_user.id).delete()
-        
-        db.session.commit()
-
-        # Enviar correo de confirmación de compra
-        send_order_confirmation_email(current_user.email, current_user.username, order)
-
-        flash(f'¡Compra realizada con éxito! Orden #{order.id}', 'success')
-        return redirect(url_for('cart.orden_confirmada', order_id=order.id))
-    
-    # Calcular total para mostrar
-    total = sum(item.get_subtotal() for item in cart_items)
-    
-    return render_template('cart/checkout.html', cart_items=cart_items, total=total)
+        return render_template('cart/checkout.html', cart_items=cart_items, total=total)
+    except Exception as e:
+        from flask import current_app
+        db.session.rollback()
+        current_app.logger.error(f'Error en checkout: {str(e)}')
+        flash('Error al procesar el checkout', 'danger')
+        return redirect(url_for(VER_CARRITO))
 
 @cart_bp.route('/orden/<int:order_id>')
 @login_required
 def orden_confirmada(order_id):
     """Página de confirmación de orden"""
-    order = Order.query.get_or_404(order_id)
-    
-    # Verificar que la orden pertenece al usuario
-    if order.user_id != current_user.id:
-        flash('No tienes permiso para ver esta orden', 'danger')
+    try:
+        order = Order.query.get_or_404(order_id)
+        
+        # Verificar que la orden pertenece al usuario
+        if order.user_id != current_user.id:
+            flash('No tienes permiso para ver esta orden', 'danger')
+            return redirect(url_for('index'))
+        
+        return render_template('cart/orden_confirmada.html', order=order)
+    except Exception as e:
+        from flask import current_app
+        current_app.logger.error(f'Error en orden_confirmada: {str(e)}')
+        flash('Error al cargar la orden', 'danger')
         return redirect(url_for('index'))
-    
-    return render_template('cart/orden_confirmada.html', order=order)
 
 @cart_bp.route('/mis-ordenes')
 @login_required

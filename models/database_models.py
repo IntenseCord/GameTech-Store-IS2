@@ -1,7 +1,7 @@
 """
 Modelos de base de datos usando SQLAlchemy
 """
-from database import db
+from extensions import db
 from datetime import datetime
 from werkzeug.security import generate_password_hash, check_password_hash
 from sqlalchemy import or_, and_

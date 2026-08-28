@@ -4,7 +4,7 @@ para soportar URLs largas e imágenes codificadas en base64
 """
 
 from app import app
-from database import db
+from extensions import db
 from sqlalchemy import text
 import os
 

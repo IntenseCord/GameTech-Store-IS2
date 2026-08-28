@@ -1,89 +1,38 @@
+
 from flask import Flask, render_template, request, redirect, url_for, jsonify
 from flask_login import current_user
 import os
 import logging
 from logging.handlers import RotatingFileHandler
 from dotenv import load_dotenv
-import secrets
 from flask_wtf.csrf import CSRFProtect
 from extensions import db, mail, login_manager
+from config import config
 
 # Cargar variables de entorno
 load_dotenv()
 
+# Obtener configuración según ambiente
+env = os.environ.get('FLASK_ENV', 'development')
+
 # Crear la aplicación Flask
 app = Flask(__name__)
+app.config.from_object(config[env])
 
-# Configuración de la aplicación
-secret_key = os.environ.get('SECRET_KEY')
-if not secret_key or secret_key == 'dev-secret-key-change-in-production':
-    # Generar una clave secreta segura si no está configurada
-    secret_key = secrets.token_hex(32)
-    print("⚠️  SECRET_KEY no configurada. Usando clave generada (cámbiala en producción)")
+# Inicializar configuración específica del ambiente
+config[env].init_app(app)
 
-app.config['SECRET_KEY'] = secret_key
-# Configurar la base de datos usando ruta absoluta para SQLite y opciones
-from pathlib import Path
-instance_path = Path(__file__).parent / 'instance'
-instance_path.mkdir(exist_ok=True)
-
-# Obtener URL de la BD desde env. Si no existe, usar SQLite local
-db_url = os.environ.get('DATABASE_URL')
-if not db_url:
-    db_file = instance_path / 'gametech_store.db'
-    db_url = f'sqlite:///{db_file}'
-
-# Si la URL es PostgreSQL pero el driver no está disponible, hacer fallback a SQLite
-if db_url and ('postgres' in db_url or db_url.startswith('postgresql')):
-    try:
-        import psycopg  # type: ignore
-    except Exception:
-        try:
-            import psycopg2  # type: ignore
-        except Exception:
-            print("⚠️  PostgreSQL driver no disponible. Usando SQLite local como fallback.")
-            db_file = instance_path / 'gametech_store.db'
-            db_url = f'sqlite:///{db_file}'
-
+# Configurar base de datos usando métodos del config
+db_url = Config.get_database_url()
 app.config['SQLALCHEMY_DATABASE_URI'] = db_url
-app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+app.config['SQLALCHEMY_ENGINE_OPTIONS'] = Config.get_engine_options(db_url)
 
-# Engine options: usar connect_args para SQLite y pool options para otras DBs
-if db_url.startswith('sqlite'):
-    app.config['SQLALCHEMY_ENGINE_OPTIONS'] = {
-        'connect_args': {'check_same_thread': False}
-    }
-else:
-    app.config['SQLALCHEMY_ENGINE_OPTIONS'] = {
-        'pool_pre_ping': True,
-        'pool_recycle': 300,
-        'pool_timeout': 30,
-        'pool_size': 10,
-        'max_overflow': 5
-    }
-app.config['UPLOAD_FOLDER'] = 'static/uploads'
-app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024  # 16MB max file size
-
-# Configuración de correo electrónico
-app.config['MAIL_SERVER'] = os.environ.get('MAIL_SERVER', 'smtp.gmail.com')
-app.config['MAIL_PORT'] = int(os.environ.get('MAIL_PORT', 587))
-app.config['MAIL_USE_TLS'] = os.environ.get('MAIL_USE_TLS', 'True') == 'True'
-app.config['MAIL_USERNAME'] = os.environ.get('MAIL_USERNAME')
-app.config['MAIL_PASSWORD'] = os.environ.get('MAIL_PASSWORD')
-app.config['MAIL_DEFAULT_SENDER'] = os.environ.get('MAIL_DEFAULT_SENDER', os.environ.get('MAIL_USERNAME'))
-
-# Configuración de seguridad para sesiones y cookies
-app.config['SESSION_COOKIE_SECURE'] = os.environ.get('FLASK_ENV') == 'production'  # Solo HTTPS en producción
-app.config['SESSION_COOKIE_HTTPONLY'] = True  # No accesible vía JavaScript
-app.config['SESSION_COOKIE_SAMESITE'] = 'Lax'  # Protección CSRF básica
-app.config['PERMANENT_SESSION_LIFETIME'] = 3600  # 1 hora de sesión permanente
+# Crear directorio de uploads si no existe
+os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
 
 # Inicializar CSRF protection
 csrf = CSRFProtect(app)
 app.logger.info('✅ CSRF Protection habilitado')
-
-# Crear directorio de uploads si no existe
-os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
 
 # Inicializar extensiones
 db.init_app(app)
@@ -121,18 +70,7 @@ from controllers.admin import admin_bp
 from controllers.hardware_analyzer import analyzer_bp
 from controllers.invoice import invoice_bp
 from controllers.wishlist import wishlist_bp
-from controllers.migrate_endpoint import migrate_bp
 
-# Registrar blueprints
-app.register_blueprint(store_bp)
-app.register_blueprint(hardware_bp)
-app.register_blueprint(auth_bp)
-app.register_blueprint(cart_bp)
-app.register_blueprint(admin_bp)
-app.register_blueprint(analyzer_bp)
-app.register_blueprint(invoice_bp)
-app.register_blueprint(wishlist_bp)
-app.register_blueprint(migrate_bp)
 
 # Configurar logging
 if not app.debug:

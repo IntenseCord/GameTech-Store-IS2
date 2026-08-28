@@ -146,31 +146,44 @@ def logout():
 @login_required
 def perfil():
     """Página de perfil del usuario"""
-    return render_template('auth/perfil.html', user=current_user)
+    try:
+        return render_template('auth/perfil.html', user=current_user)
+    except Exception as e:
+        from flask import current_app
+        current_app.logger.error(f'Error en perfil: {str(e)}')
+        flash('Error al cargar el perfil', 'danger')
+        return redirect(url_for('index'))
 
 @auth_bp.route('/perfil/editar', methods=['GET', 'POST'])
 @login_required
 def editar_perfil():
     """Editar perfil del usuario"""
-    if request.method == 'POST':
-        email = request.form.get('email')
-        current_password = request.form.get('current_password')
-        new_password = request.form.get('new_password')
+    try:
+        if request.method == 'POST':
+            email = request.form.get('email')
+            current_password = request.form.get('current_password')
+            new_password = request.form.get('new_password')
+            
+            # Actualizar email
+            mensaje_email = actualizar_email(current_user, email)
+            if mensaje_email:
+                flash(*mensaje_email)
+            
+            # Cambiar contraseña
+            mensaje_password = actualizar_password(current_user, current_password, new_password)
+            if mensaje_password:
+                flash(*mensaje_password)
+            
+            db.session.commit()
+            return redirect(url_for('auth.perfil'))
         
-        # Actualizar email
-        mensaje_email = actualizar_email(current_user, email)
-        if mensaje_email:
-            flash(*mensaje_email)
-        
-        # Cambiar contraseña
-        mensaje_password = actualizar_password(current_user, current_password, new_password)
-        if mensaje_password:
-            flash(*mensaje_password)
-        
-        db.session.commit()
+        return render_template('auth/editar_perfil.html', user=current_user)
+    except Exception as e:
+        from flask import current_app
+        db.session.rollback()
+        current_app.logger.error(f'Error en editar_perfil: {str(e)}')
+        flash('Error al actualizar el perfil', 'danger')
         return redirect(url_for('auth.perfil'))
-    
-    return render_template('auth/editar_perfil.html', user=current_user)
 
 ''''Funcion auxiliar para actualizar email'''
 def actualizar_email(user, nuevo_email):
@@ -210,26 +223,27 @@ def validate_password_security(password):
 @auth_bp.route('/recuperar-password', methods=['GET', 'POST'])
 def recuperar_password():
     """Página para solicitar recuperación de contraseña"""
-    if current_user.is_authenticated:
-        return redirect(url_for('index'))
-    
-    if request.method == 'POST':
-        email = request.form.get('email')
-        user = User.query.filter_by(email=email).first()
+    try:
+        if current_user.is_authenticated:
+            return redirect(url_for('index'))
         
-        if user:
-            # Generar token único
-            token = secrets.token_urlsafe(32)
-            user.reset_token = token
-            # Usar timezone aware datetime
-            user.reset_token_expiry = datetime.now(timezone.utc) + timedelta(hours=1)
-            db.session.commit()
+        if request.method == 'POST':
+            email = request.form.get('email')
+            user = User.query.filter_by(email=email).first()
             
-            # Enviar email
-            reset_url = url_for('auth.reset_password', token=token, _external=True)
-            msg = Message('Recuperación de Contraseña',
-                        recipients=[user.email])
-            msg.body = f'''Para restablecer tu contraseña, visita el siguiente enlace:
+            if user:
+                # Generar token único
+                token = secrets.token_urlsafe(32)
+                user.reset_token = token
+                # Usar timezone aware datetime
+                user.reset_token_expiry = datetime.now(timezone.utc) + timedelta(hours=1)
+                db.session.commit()
+                
+                # Enviar email
+                reset_url = url_for('auth.reset_password', token=token, _external=True)
+                msg = Message('Recuperación de Contraseña',
+                            recipients=[user.email])
+                msg.body = f'''Para restablecer tu contraseña, visita el siguiente enlace:
 
 {reset_url}
 
@@ -237,35 +251,47 @@ Si no solicitaste un restablecimiento de contraseña, puedes ignorar este mensaj
 
 El enlace expirará en 1 hora.
 '''
-            mail.send(msg)
+                mail.send(msg)
+                
+                flash('Se ha enviado un email con las instrucciones para recuperar tu contraseña', 'info')
+                return redirect(url_for(AUTH_LOGIN))
             
-            flash('Se ha enviado un email con las instrucciones para recuperar tu contraseña', 'info')
+            flash('Si el email existe en nuestra base de datos, recibirás las instrucciones para recuperar tu contraseña', 'info')
             return redirect(url_for(AUTH_LOGIN))
         
-        flash('Si el email existe en nuestra base de datos, recibirás las instrucciones para recuperar tu contraseña', 'info')
+        return render_template('auth/recuperar_password.html')
+    except Exception as e:
+        from flask import current_app
+        db.session.rollback()
+        current_app.logger.error(f'Error en recuperar_password: {str(e)}')
+        flash('Error al procesar la solicitud de recuperación', 'danger')
         return redirect(url_for(AUTH_LOGIN))
-    
-    return render_template('auth/recuperar_password.html')
 
 @auth_bp.route('/reset-password/<token>', methods=['GET', 'POST'])
 def reset_password(token):
     '''Página para establecer nueva contraseña'''
-    if current_user.is_authenticated:
-        return redirect(url_for('index'))
+    try:
+        if current_user.is_authenticated:
+            return redirect(url_for('index'))
 
-    user = obtener_usuario_por_token(token)
-    if not user:
-        flash('Error al conectar con la base de datos o token inválido. Por favor, solicita un nuevo enlace.', 'danger')
+        user = obtener_usuario_por_token(token)
+        if not user:
+            flash('Error al conectar con la base de datos o token inválido. Por favor, solicita un nuevo enlace.', 'danger')
+            return redirect(url_for(AUTH_LOGIN))
+
+        if token_expirado(user.reset_token_expiry):
+            flash('El enlace de recuperación ha expirado. Por favor, solicita uno nuevo.', 'danger')
+            return redirect(url_for(AUTH_LOGIN))
+
+        if request.method == 'POST':
+            return restablecer_password(user)
+
+        return render_template(RESET_PASSWORD)
+    except Exception as e:
+        from flask import current_app
+        current_app.logger.error(f'Error en reset_password: {str(e)}')
+        flash('Error al procesar el restablecimiento de contraseña', 'danger')
         return redirect(url_for(AUTH_LOGIN))
-
-    if token_expirado(user.reset_token_expiry):
-        flash('El enlace de recuperación ha expirado. Por favor, solicita uno nuevo.', 'danger')
-        return redirect(url_for(AUTH_LOGIN))
-
-    if request.method == 'POST':
-        return restablecer_password(user)
-
-    return render_template(RESET_PASSWORD)
 
 '''Intenta obtener un usuario por su token de reseteo, con reintentos en caso de error'''
 def obtener_usuario_por_token(token, reintentos=3):
@@ -327,55 +353,69 @@ def validate_password_reset(password, confirm_password):
 @auth_bp.route('/verify-email/<token>')
 def verify_email(token):
     """Verificar correo electrónico del usuario"""
-    user = User.query.filter_by(verification_token=token).first()
-    
-    if not user:
-        flash('Token de verificación inválido.', 'danger')
+    try:
+        user = User.query.filter_by(verification_token=token).first()
+        
+        if not user:
+            flash('Token de verificación inválido.', 'danger')
+            return redirect(url_for('index'))
+        
+        # Verificar si el token ha expirado
+        if user.token_expiry and datetime.now(timezone.utc) > user.token_expiry.replace(tzinfo=timezone.utc):
+            flash('El token de verificación ha expirado. Por favor solicita uno nuevo.', 'warning')
+            return redirect(url_for('auth.resend_verification'))
+        
+        # Verificar el email
+        user.email_verified = True
+        user.verification_token = None
+        user.token_expiry = None
+        db.session.commit()
+        
+        # Enviar correo de bienvenida
+        send_welcome_email(user.email, user.username)
+        
+        flash('¡Tu correo ha sido verificado exitosamente! Ya puedes iniciar sesión.', 'success')
+        return redirect(url_for(AUTH_LOGIN))
+    except Exception as e:
+        from flask import current_app
+        db.session.rollback()
+        current_app.logger.error(f'Error en verify_email: {str(e)}')
+        flash('Error al verificar el correo electrónico', 'danger')
         return redirect(url_for('index'))
-    
-    # Verificar si el token ha expirado
-    if user.token_expiry and datetime.now(timezone.utc) > user.token_expiry.replace(tzinfo=timezone.utc):
-        flash('El token de verificación ha expirado. Por favor solicita uno nuevo.', 'warning')
-        return redirect(url_for('auth.resend_verification'))
-    
-    # Verificar el email
-    user.email_verified = True
-    user.verification_token = None
-    user.token_expiry = None
-    db.session.commit()
-    
-    # Enviar correo de bienvenida
-    send_welcome_email(user.email, user.username)
-    
-    flash('¡Tu correo ha sido verificado exitosamente! Ya puedes iniciar sesión.', 'success')
-    return redirect(url_for(AUTH_LOGIN))
 
 @auth_bp.route('/resend-verification', methods=['GET', 'POST'])
 def resend_verification():
     """Reenviar correo de verificación"""
-    if request.method == 'POST':
-        email = request.form.get('email')
-        user = User.query.filter_by(email=email).first()
-        
-        if not user:
-            flash('No existe una cuenta con ese correo electrónico.', 'danger')
-            return render_template('auth/resend_verification.html')
-        
-        if user.email_verified:
-            flash('Tu correo ya ha sido verificado. Puedes iniciar sesión.', 'info')
+    try:
+        if request.method == 'POST':
+            email = request.form.get('email')
+            user = User.query.filter_by(email=email).first()
+            
+            if not user:
+                flash('No existe una cuenta con ese correo electrónico.', 'danger')
+                return render_template('auth/resend_verification.html')
+            
+            if user.email_verified:
+                flash('Tu correo ya ha sido verificado. Puedes iniciar sesión.', 'info')
+                return redirect(url_for(AUTH_LOGIN))
+            
+            # Generar nuevo token
+            user.verification_token = generate_verification_token()
+            user.token_expiry = get_token_expiry()
+            db.session.commit()
+            
+            # Enviar correo
+            if send_verification_email(user.email, user.username, user.verification_token):
+                flash('Te hemos enviado un nuevo correo de verificación. Por favor revisa tu bandeja de entrada.', 'success')
+            else:
+                flash('Hubo un error al enviar el correo. Por favor intenta más tarde.', 'danger')
+            
             return redirect(url_for(AUTH_LOGIN))
         
-        # Generar nuevo token
-        user.verification_token = generate_verification_token()
-        user.token_expiry = get_token_expiry()
-        db.session.commit()
-        
-        # Enviar correo
-        if send_verification_email(user.email, user.username, user.verification_token):
-            flash('Te hemos enviado un nuevo correo de verificación. Por favor revisa tu bandeja de entrada.', 'success')
-        else:
-            flash('Hubo un error al enviar el correo. Por favor intenta más tarde.', 'danger')
-        
+        return render_template('auth/resend_verification.html')
+    except Exception as e:
+        from flask import current_app
+        db.session.rollback()
+        current_app.logger.error(f'Error en resend_verification: {str(e)}')
+        flash('Error al reenviar el correo de verificación', 'danger')
         return redirect(url_for(AUTH_LOGIN))
-    
-    return render_template('auth/resend_verification.html')

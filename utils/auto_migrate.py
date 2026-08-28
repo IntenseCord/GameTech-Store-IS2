@@ -1,9 +1,9 @@
 """
 Sistema de migraciones automáticas
-Se ejecuta al iniciar la aplicación
+-Se ejecuta al iniciar la aplicación
 """
 from flask import current_app
-from database import db
+from extensions import db
 from sqlalchemy import text, inspect
 import os
 
