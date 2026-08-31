@@ -1,5 +1,5 @@
 """
-Configuración de fixtures para pytest
+Configuración de fixtures para pytest y pytest-bdd
 """
 import pytest
 from app import app
@@ -71,3 +71,10 @@ def test_hardware(app_context):
     db.session.add(hardware)
     db.session.commit()
     return hardware
+
+
+# Fixtures adicionales para pytest-bdd
+@pytest.fixture
+def browser():
+    """Fixture para navegador (opcional para pruebas con Selenium)"""
+    pass
