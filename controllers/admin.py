@@ -105,31 +105,80 @@ def nuevo_juego():
     try:
         if request.method == 'POST':
             try:
+                # Validar campos requeridos
+                nombre = request.form.get('nombre', '').strip()
+                descripcion = request.form.get('descripcion', '').strip()
+                genero = request.form.get('genero', '').strip()
+                desarrollador = request.form.get('desarrollador', '').strip()
+                
+                if not nombre or not descripcion or not genero or not desarrollador:
+                    flash('Todos los campos son requeridos', 'danger')
+                    return render_template('admin/juego_form.html')
+                
+                # Validar precio (debe ser positivo)
+                try:
+                    precio = float(request.form.get('precio', 0))
+                    if precio < 0:
+                        flash('El precio debe ser positivo', 'danger')
+                        return render_template('admin/juego_form.html')
+                except (ValueError, TypeError):
+                    flash('Precio inválido', 'danger')
+                    return render_template('admin/juego_form.html')
+                
+                # Validar stock (debe ser entero positivo)
+                try:
+                    stock = int(request.form.get('stock', 0))
+                    if stock < 0:
+                        flash('El stock debe ser positivo', 'danger')
+                        return render_template('admin/juego_form.html')
+                except (ValueError, TypeError):
+                    flash('Stock inválido', 'danger')
+                    return render_template('admin/juego_form.html')
+                
+                # Validar fecha de lanzamiento
+                try:
+                    fecha_lanzamiento = datetime.strptime(request.form.get('fecha_lanzamiento', ''), '%Y-%m-%d')
+                except (ValueError, TypeError):
+                    flash('Fecha de lanzamiento inválida (formato: YYYY-MM-DD)', 'danger')
+                    return render_template('admin/juego_form.html')
+                
                 # Procesar imagen - archivo o URL
                 imagen_path = None
                 imagen = request.files.get('imagen')
                 imagen_url = request.form.get('imagen_url', '').strip()
                 
                 if imagen and imagen.filename:
-                    # Procesar archivo subido
-                    filename = secure_filename(imagen.filename)
+                    # Validar archivo de manera segura
+                    from utils.file_validation import validate_file_upload, generate_unique_filename
+                    is_valid, error_msg = validate_file_upload(imagen)
+                    if not is_valid:
+                        flash(f'Error en imagen: {error_msg}', 'danger')
+                        return render_template('admin/juego_form.html')
+                    
+                    # Generar nombre único y guardar
+                    filename = generate_unique_filename(imagen.filename)
                     imagen.save(os.path.join(UPLOAD, filename))
                     imagen_path = os.path.join('/' + UPLOAD, filename)
                 elif imagen_url:
-                    # Usar URL proporcionada
+                    # Validar URL de manera segura
+                    from utils.file_validation import validate_image_url
+                    is_valid, error_msg = validate_image_url(imagen_url)
+                    if not is_valid:
+                        flash(f'Error en URL de imagen: {error_msg}', 'danger')
+                        return render_template('admin/juego_form.html')
                     imagen_path = imagen_url
 
                 # Crear juego
                 juego = Game(
-                    nombre=request.form['nombre'],
-                    descripcion=request.form['descripcion'],
-                    precio=float(request.form['precio']),
-                    genero=request.form['genero'],
-                    desarrollador=request.form['desarrollador'],
-                    fecha_lanzamiento=datetime.strptime(request.form['fecha_lanzamiento'], '%Y-%m-%d'),
-                    requisitos_minimos=request.form['requisitos_minimos'],
-                    requisitos_recomendados=request.form['requisitos_recomendados'],
-                    stock=int(request.form['stock']),
+                    nombre=nombre,
+                    descripcion=descripcion,
+                    precio=precio,
+                    genero=genero,
+                    desarrollador=desarrollador,
+                    fecha_lanzamiento=fecha_lanzamiento,
+                    requisitos_minimos=request.form.get('requisitos_minimos', ''),
+                    requisitos_recomendados=request.form.get('requisitos_recomendados', ''),
+                    stock=stock,
                     imagen=imagen_path
                 )
                 db.session.add(juego)
@@ -164,12 +213,24 @@ def editar_juego(game_id):
                 imagen_url = request.form.get('imagen_url', '').strip()
                 
                 if imagen and imagen.filename:
-                    # Procesar archivo subido
-                    filename = secure_filename(imagen.filename)
+                    # Validar archivo de manera segura
+                    from utils.file_validation import validate_file_upload, generate_unique_filename
+                    is_valid, error_msg = validate_file_upload(imagen)
+                    if not is_valid:
+                        flash(f'Error en imagen: {error_msg}', 'danger')
+                        return render_template('admin/juego_form.html', game=game)
+                    
+                    # Generar nombre único y guardar
+                    filename = generate_unique_filename(imagen.filename)
                     imagen.save(os.path.join(UPLOAD, filename))
                     game.imagen = os.path.join('/' + UPLOAD, filename)
                 elif imagen_url:
-                    # Usar URL proporcionada
+                    # Validar URL de manera segura
+                    from utils.file_validation import validate_image_url
+                    is_valid, error_msg = validate_image_url(imagen_url)
+                    if not is_valid:
+                        flash(f'Error en URL de imagen: {error_msg}', 'danger')
+                        return render_template('admin/juego_form.html', game=game)
                     game.imagen = imagen_url
 
                 # Actualizar datos
@@ -221,29 +282,77 @@ def nuevo_hardware():
     try:
         if request.method == 'POST':
             try:
+                # Validar campos requeridos
+                tipo = request.form.get('tipo', '').strip()
+                marca = request.form.get('marca', '').strip()
+                modelo = request.form.get('modelo', '').strip()
+                especificaciones = request.form.get('especificaciones', '').strip()
+                
+                if not tipo or not marca or not modelo or not especificaciones:
+                    flash('Todos los campos son requeridos', 'danger')
+                    return render_template('admin/hardware_form.html')
+                
+                # Validar tipo de hardware
+                tipos_validos = ['CPU', 'GPU', 'RAM', 'Motherboard', 'Almacenamiento', 'Fuente de poder', 'Refrigeración', 'Gabinete', 'Otro']
+                if tipo not in tipos_validos:
+                    flash('Tipo de hardware inválido', 'danger')
+                    return render_template('admin/hardware_form.html')
+                
+                # Validar precio (debe ser positivo)
+                try:
+                    precio = float(request.form.get('precio', 0))
+                    if precio < 0:
+                        flash('El precio debe ser positivo', 'danger')
+                        return render_template('admin/hardware_form.html')
+                except (ValueError, TypeError):
+                    flash('Precio inválido', 'danger')
+                    return render_template('admin/hardware_form.html')
+                
+                # Validar stock (debe ser entero positivo)
+                try:
+                    stock = int(request.form.get('stock', 0))
+                    if stock < 0:
+                        flash('El stock debe ser positivo', 'danger')
+                        return render_template('admin/hardware_form.html')
+                except (ValueError, TypeError):
+                    flash('Stock inválido', 'danger')
+                    return render_template('admin/hardware_form.html')
+                
                 # Procesar imagen - archivo o URL
                 imagen_path = None
                 imagen = request.files.get('imagen')
                 imagen_url = request.form.get('imagen_url', '').strip()
                 
                 if imagen and imagen.filename:
-                    # Procesar archivo subido
-                    filename = secure_filename(imagen.filename)
+                    # Validar archivo de manera segura
+                    from utils.file_validation import validate_file_upload, generate_unique_filename
+                    is_valid, error_msg = validate_file_upload(imagen)
+                    if not is_valid:
+                        flash(f'Error en imagen: {error_msg}', 'danger')
+                        return render_template('admin/hardware_form.html')
+                    
+                    # Generar nombre único y guardar
+                    filename = generate_unique_filename(imagen.filename)
                     imagen.save(os.path.join(UPLOAD, filename))
                     imagen_path = os.path.join('/' + UPLOAD, filename)
                 elif imagen_url:
-                    # Usar URL proporcionada
+                    # Validar URL de manera segura
+                    from utils.file_validation import validate_image_url
+                    is_valid, error_msg = validate_image_url(imagen_url)
+                    if not is_valid:
+                        flash(f'Error en URL de imagen: {error_msg}', 'danger')
+                        return render_template('admin/hardware_form.html')
                     imagen_path = imagen_url
 
                 # Crear componente de hardware
                 componente = Hardware(
-                    tipo=request.form['tipo'],
-                    marca=request.form['marca'],
-                    modelo=request.form['modelo'],
-                    precio=float(request.form['precio']),
-                    descripcion=request.form['descripcion'],
-                    especificaciones=request.form['especificaciones'],
-                    stock=int(request.form['stock']),
+                    tipo=tipo,
+                    marca=marca,
+                    modelo=modelo,
+                    precio=precio,
+                    descripcion=request.form.get('descripcion', ''),
+                    especificaciones=especificaciones,
+                    stock=stock,
                     imagen=imagen_path
                 )
                 db.session.add(componente)
@@ -278,12 +387,24 @@ def editar_hardware(hardware_id):
                 imagen_url = request.form.get('imagen_url', '').strip()
                 
                 if imagen and imagen.filename:
-                    # Procesar archivo subido
-                    filename = secure_filename(imagen.filename)
+                    # Validar archivo de manera segura
+                    from utils.file_validation import validate_file_upload, generate_unique_filename
+                    is_valid, error_msg = validate_file_upload(imagen)
+                    if not is_valid:
+                        flash(f'Error en imagen: {error_msg}', 'danger')
+                        return render_template('admin/hardware_form.html', hardware=component)
+                    
+                    # Generar nombre único y guardar
+                    filename = generate_unique_filename(imagen.filename)
                     imagen.save(os.path.join(UPLOAD, filename))
                     component.imagen = os.path.join('/' + UPLOAD, filename)
                 elif imagen_url:
-                    # Usar URL proporcionada
+                    # Validar URL de manera segura
+                    from utils.file_validation import validate_image_url
+                    is_valid, error_msg = validate_image_url(imagen_url)
+                    if not is_valid:
+                        flash(f'Error en URL de imagen: {error_msg}', 'danger')
+                        return render_template('admin/hardware_form.html', hardware=component)
                     component.imagen = imagen_url
 
                 # Actualizar datos

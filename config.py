@@ -9,6 +9,7 @@ class Config:
     """Configuración base"""
     SECRET_KEY = os.environ.get('SECRET_KEY')
     SQLALCHEMY_TRACK_MODIFICATIONS = False
+    ENV = os.environ.get('FLASK_ENV', 'development')
     
     # Configuración de base de datos
     @staticmethod
@@ -75,11 +76,26 @@ class DevelopmentConfig(Config):
     
     @staticmethod
     def init_app(app):
-        # Generar SECRET_KEY si no existe para desarrollo
+        # Usar SECRET_KEY persistente para desarrollo
         import secrets
-        if not app.config.get('SECRET_KEY') or app.config['SECRET_KEY'] == 'dev-secret-key-change-in-production':
-            app.config['SECRET_KEY'] = secrets.token_hex(32)
-            print("⚠️  SECRET_KEY generada para desarrollo")
+        from pathlib import Path
+        
+        secret_key = app.config.get('SECRET_KEY')
+        
+        # Si no hay SECRET_KEY en entorno, usar una persistente en archivo
+        if not secret_key or secret_key == 'dev-secret-key-change-in-production':
+            secret_file = Path(__file__).parent / '.dev_secret_key'
+            
+            if secret_file.exists():
+                with open(secret_file, 'r') as f:
+                    secret_key = f.read().strip()
+            else:
+                secret_key = secrets.token_hex(32)
+                with open(secret_file, 'w') as f:
+                    f.write(secret_key)
+                print("⚠️  SECRET_KEY generada y guardada en .dev_secret_key")
+            
+            app.config['SECRET_KEY'] = secret_key
 
 
 class ProductionConfig(Config):
@@ -88,12 +104,16 @@ class ProductionConfig(Config):
     SESSION_COOKIE_SECURE = True  # Solo HTTPS en producción
     SESSION_COOKIE_HTTPONLY = True
     SESSION_COOKIE_SAMESITE = 'Lax'
+    ENV = 'production'
     
     @staticmethod
     def init_app(app):
         # Exigir SECRET_KEY en producción
         if not app.config.get('SECRET_KEY') or app.config['SECRET_KEY'] == 'dev-secret-key-change-in-production':
             raise ValueError('SECRET_KEY es requerido en producción')
+        
+        # Configuraciones adicionales de producción
+        app.config['PREFERRED_URL_SCHEME'] = 'https'
 
 
 class TestingConfig(Config):

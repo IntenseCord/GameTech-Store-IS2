@@ -71,7 +71,7 @@ class Game(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     nombre = db.Column(db.String(200), nullable=False, index=True)
     descripcion = db.Column(db.Text, nullable=False)
-    precio = db.Column(db.Float, nullable=False)
+    precio = db.Column(db.Numeric(12, 2), nullable=False)
     imagen = db.Column(db.String(5000))  # Aumentado de 300 a 1000 para soportar URLs largas/base64
     genero = db.Column(db.String(50), index=True)
     desarrollador = db.Column(db.String(100))
@@ -181,7 +181,7 @@ class Hardware(db.Model):
     tipo = db.Column(db.String(50), nullable=False, index=True)
     marca = db.Column(db.String(100), nullable=False, index=True)
     modelo = db.Column(db.String(200), nullable=False)
-    precio = db.Column(db.Float, nullable=False)
+    precio = db.Column(db.Numeric(12, 2), nullable=False)
     descripcion = db.Column(db.Text)
     imagen = db.Column(db.String(10000)) 
     especificaciones = db.Column(db.Text)  
@@ -314,7 +314,7 @@ class Order(db.Model):
     
     id = db.Column(db.Integer, primary_key=True)
     user_id = db.Column(db.Integer, db.ForeignKey(USERS_ID), nullable=False)
-    total = db.Column(db.Float, nullable=False)
+    total = db.Column(db.Numeric(12, 2), nullable=False)
     status = db.Column(db.String(20), default='pending')  # pending, completed, cancelled
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
@@ -336,7 +336,7 @@ class OrderItem(db.Model):
     product_id = db.Column(db.Integer, nullable=False)
     product_name = db.Column(db.String(200), nullable=False)
     quantity = db.Column(db.Integer, nullable=False)
-    price = db.Column(db.Float, nullable=False)
+    price = db.Column(db.Numeric(12, 2), nullable=False)
     
     def get_subtotal(self):
         """Calcular subtotal"""
@@ -456,9 +456,9 @@ class Invoice(db.Model):
     regimen_emisor = db.Column(db.String(50), default='Responsable de IVA')
     
     # Montos (Colombia - IVA 19%)
-    subtotal = db.Column(db.Float, nullable=False)
-    iva = db.Column(db.Float, nullable=False)  # 19% en Colombia
-    total = db.Column(db.Float, nullable=False)
+    subtotal = db.Column(db.Numeric(12, 2), nullable=False)
+    iva = db.Column(db.Numeric(12, 2), nullable=False)  # 19% en Colombia
+    total = db.Column(db.Numeric(12, 2), nullable=False)
     
     # Método y forma de pago
     metodo_pago = db.Column(db.String(50), default='Contado')  # Contado, Crédito
@@ -504,9 +504,9 @@ class Invoice(db.Model):
     
     @classmethod
     def create_from_order(cls, order, user_fiscal_data):
-        """Crear factura desde una orden"""
-        # Calcular montos
-        subtotal = order.total / 1.16  # Asumiendo IVA del 16%
+        """Crear factura desde una orden (Colombia - DIAN)"""
+        # Calcular montos (IVA 19% en Colombia)
+        subtotal = order.total / 1.19
         iva = order.total - subtotal
         
         invoice = cls(
@@ -514,17 +514,20 @@ class Invoice(db.Model):
             folio=cls.generate_folio(),
             user_id=order.user_id,
             order_id=order.id,
-            rfc_receptor=user_fiscal_data.get('rfc'),
+            nit_receptor=user_fiscal_data.get('nit'),
+            tipo_documento_receptor=user_fiscal_data.get('tipo_documento', '31'),
             razon_social_receptor=user_fiscal_data.get('razon_social'),
             direccion_fiscal=user_fiscal_data.get('direccion_fiscal'),
+            ciudad=user_fiscal_data.get('ciudad'),
+            departamento=user_fiscal_data.get('departamento'),
             codigo_postal=user_fiscal_data.get('codigo_postal'),
-            regimen_fiscal=user_fiscal_data.get('regimen_fiscal'),
-            uso_cfdi=user_fiscal_data.get('uso_cfdi', 'G03'),
+            telefono=user_fiscal_data.get('telefono'),
+            email_receptor=user_fiscal_data.get('email'),
             subtotal=round(subtotal, 2),
             iva=round(iva, 2),
             total=round(order.total, 2),
-            metodo_pago='PUE',
-            forma_pago=user_fiscal_data.get('forma_pago', '03')
+            metodo_pago=user_fiscal_data.get('metodo_pago', 'Contado'),
+            forma_pago=user_fiscal_data.get('forma_pago', 'Tarjeta de Crédito')
         )
         
         return invoice
@@ -535,15 +538,30 @@ class Invoice(db.Model):
             'id': self.id,
             'uuid': self.uuid,
             'folio': self.folio,
-            'rfc_receptor': self.rfc_receptor,
+            'nit_receptor': self.nit_receptor,
+            'tipo_documento_receptor': self.tipo_documento_receptor,
             'razon_social_receptor': self.razon_social_receptor,
+            'direccion_fiscal': self.direccion_fiscal,
+            'ciudad': self.ciudad,
+            'departamento': self.departamento,
+            'codigo_postal': self.codigo_postal,
+            'telefono': self.telefono,
+            'email_receptor': self.email_receptor,
+            'nit_emisor': self.nit_emisor,
+            'razon_social_emisor': self.razon_social_emisor,
+            'regimen_emisor': self.regimen_emisor,
             'subtotal': self.subtotal,
             'iva': self.iva,
             'total': self.total,
+            'metodo_pago': self.metodo_pago,
+            'forma_pago': self.forma_pago,
             'status': self.status,
             'fecha_emision': self.fecha_emision.strftime('%Y-%m-%d %H:%M:%S'),
+            'fecha_validacion_dian': self.fecha_validacion_dian.strftime('%Y-%m-%d %H:%M:%S'),
             'pdf_path': self.pdf_path,
-            'xml_path': self.xml_path
+            'xml_path': self.xml_path,
+            'cufe': self.cufe,
+            'qr_code': self.qr_code
         }
     
     def __repr__(self):
