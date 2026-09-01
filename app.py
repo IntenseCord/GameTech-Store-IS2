@@ -7,7 +7,7 @@ from logging.handlers import RotatingFileHandler
 from dotenv import load_dotenv
 from flask_wtf.csrf import CSRFProtect
 from extensions import db, mail, login_manager
-from config import config
+from config import config, Config
 
 # Cargar variables de entorno
 load_dotenv()
@@ -71,6 +71,15 @@ from controllers.hardware_analyzer import analyzer_bp
 from controllers.invoice import invoice_bp
 from controllers.wishlist import wishlist_bp
 
+# Registrar blueprints
+app.register_blueprint(store_bp)
+app.register_blueprint(hardware_bp)
+app.register_blueprint(auth_bp)
+app.register_blueprint(cart_bp)
+app.register_blueprint(admin_bp)
+app.register_blueprint(analyzer_bp)
+app.register_blueprint(invoice_bp)
+app.register_blueprint(wishlist_bp)
 
 # Configurar logging
 if not app.debug:

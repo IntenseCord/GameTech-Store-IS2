@@ -7,6 +7,7 @@ from functools import wraps
 from extensions import db
 from models.database_models import User, Game, Hardware, Order, OrderItem
 from werkzeug.utils import secure_filename
+from utils.error_handling import log_db_error
 import os
 from datetime import datetime
 
@@ -77,9 +78,7 @@ def toggle_admin(user_id):
             flash(f'Rol de administrador actualizado para {user.username}', 'success')
         return redirect(url_for('admin.usuarios'))
     except Exception as e:
-        from flask import current_app
-        db.session.rollback()
-        current_app.logger.error(f'Error en toggle_admin: {str(e)}')
+        log_db_error('toggle_admin', e)
         flash('Error al actualizar rol de administrador', 'danger')
         return redirect(url_for('admin.usuarios'))
 
@@ -186,9 +185,7 @@ def nuevo_juego():
                 flash('Juego creado exitosamente', 'success')
                 return redirect(url_for(ADMIN_JUEGOS))
             except Exception as e:
-                db.session.rollback()
-                from flask import current_app
-                current_app.logger.error(f'Error al crear juego: {str(e)}')
+                log_db_error('nuevo_juego', e)
                 flash(f'Error al crear juego: {str(e)}', 'danger')
         
         return render_template('admin/juego_form.html')
@@ -248,9 +245,7 @@ def editar_juego(game_id):
                 flash('Juego actualizado exitosamente', 'success')
                 return redirect(url_for(ADMIN_JUEGOS))
             except Exception as e:
-                db.session.rollback()
-                from flask import current_app
-                current_app.logger.error(f'Error al actualizar juego: {str(e)}')
+                log_db_error('editar_juego', e)
                 flash(f'Error al actualizar juego: {str(e)}', 'danger')
         
         return render_template('admin/juego_form.html', game=game)
@@ -360,9 +355,7 @@ def nuevo_hardware():
                 flash('Componente creado exitosamente', 'success')
                 return redirect(url_for(ADMIN_HARDWARE))
             except Exception as e:
-                db.session.rollback()
-                from flask import current_app
-                current_app.logger.error(f'Error al crear componente: {str(e)}')
+                log_db_error('nuevo_hardware', e)
                 flash(f'Error al crear componente: {str(e)}', 'danger')
         
         return render_template('admin/hardware_form.html')
@@ -420,9 +413,7 @@ def editar_hardware(hardware_id):
                 flash('Componente actualizado exitosamente', 'success')
                 return redirect(url_for(ADMIN_HARDWARE))
             except Exception as e:
-                db.session.rollback()
-                from flask import current_app
-                current_app.logger.error(f'Error al actualizar componente: {str(e)}')
+                log_db_error('editar_hardware', e)
                 flash(f'Error al actualizar componente: {str(e)}', 'danger')
         
         return render_template('admin/hardware_form.html', hardware=component)
@@ -476,9 +467,7 @@ def actualizar_estado_orden(order_id):
             flash('Estado inválido', 'danger')
         return redirect(url_for('admin.ver_orden', order_id=order_id))
     except Exception as e:
-        from flask import current_app
-        db.session.rollback()
-        current_app.logger.error(f'Error en actualizar_estado_orden: {str(e)}')
+        log_db_error('actualizar_estado_orden', e)
         flash('Error al actualizar estado de la orden', 'danger')
         return redirect(url_for('admin.ver_orden', order_id=order_id))
 
@@ -501,9 +490,7 @@ def eliminar_juego(game_id):
         flash('Juego eliminado exitosamente', 'success')
         return redirect(url_for(ADMIN_JUEGOS))
     except Exception as e:
-        from flask import current_app
-        db.session.rollback()
-        current_app.logger.error(f'Error en eliminar_juego: {str(e)}')
+        log_db_error('eliminar_juego', e)
         flash(f'Error al eliminar juego: {str(e)}', 'danger')
         return redirect(url_for(ADMIN_JUEGOS))
 
@@ -526,8 +513,6 @@ def eliminar_hardware(hardware_id):
         flash('Componente eliminado exitosamente', 'success')
         return redirect(url_for(ADMIN_HARDWARE))
     except Exception as e:
-        from flask import current_app
-        db.session.rollback()
-        current_app.logger.error(f'Error en eliminar_hardware: {str(e)}')
+        log_db_error('eliminar_hardware', e)
         flash(f'Error al eliminar componente: {str(e)}', 'danger')
         return redirect(url_for(ADMIN_HARDWARE))

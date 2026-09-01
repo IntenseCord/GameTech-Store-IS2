@@ -2,6 +2,7 @@
 Tests de modelos de base de datos
 """
 import pytest
+from extensions import db
 from models.database_models import User, Game, Hardware
 
 
@@ -36,7 +37,7 @@ def test_crear_juego(app_context):
     
     assert game.id is not None
     assert game.nombre == 'Test Game'
-    assert game.precio == 49.99
+    assert float(game.precio) == 49.99
     assert game.stock == 10
 
 
@@ -56,7 +57,7 @@ def test_crear_hardware(app_context):
     assert hardware.id is not None
     assert hardware.tipo == 'CPU'
     assert hardware.marca == 'Intel'
-    assert hardware.precio == 199.99
+    assert float(hardware.precio) == 199.99
 
 
 def test_usuario_admin(app_context):

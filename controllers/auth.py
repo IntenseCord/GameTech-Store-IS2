@@ -8,6 +8,7 @@ from extensions import db, mail
 from models.database_models import User
 from utils.email_service import send_verification_email, generate_verification_token, get_token_expiry, send_welcome_email
 from utils.rate_limiter import limiter, rate_limit_login, rate_limit_register
+from utils.error_handling import log_db_error
 import re
 import secrets
 from datetime import datetime, timedelta, timezone
@@ -179,9 +180,7 @@ def editar_perfil():
         
         return render_template('auth/editar_perfil.html', user=current_user)
     except Exception as e:
-        from flask import current_app
-        db.session.rollback()
-        current_app.logger.error(f'Error en editar_perfil: {str(e)}')
+        log_db_error('editar_perfil', e)
         flash('Error al actualizar el perfil', 'danger')
         return redirect(url_for('auth.perfil'))
 
@@ -261,9 +260,7 @@ El enlace expirará en 1 hora.
         
         return render_template('auth/recuperar_password.html')
     except Exception as e:
-        from flask import current_app
-        db.session.rollback()
-        current_app.logger.error(f'Error en recuperar_password: {str(e)}')
+        log_db_error('recuperar_password', e)
         flash('Error al procesar la solicitud de recuperación', 'danger')
         return redirect(url_for(AUTH_LOGIN))
 
@@ -300,8 +297,8 @@ def obtener_usuario_por_token(token, reintentos=3):
             user = User.query.filter_by(reset_token=token).first()
             if user:
                 return user
-        except Exception:
-            db.session.rollback()
+        except Exception as e:
+            log_db_error('obtener_usuario_por_token', e)
     return None
 
 def token_expirado(expiry_time):
@@ -328,8 +325,8 @@ def restablecer_password(user):
         flash('Tu contraseña ha sido actualizada correctamente. Ahora puedes iniciar sesión.', 'success')
         return redirect(url_for(AUTH_LOGIN))
 
-    except Exception:
-        db.session.rollback()
+    except Exception as e:
+        log_db_error('restablecer_password', e)
         flash('Ocurrió un error al actualizar la contraseña. Por favor, intenta nuevamente.', 'danger')
         return render_template(RESET_PASSWORD)
 
@@ -377,9 +374,7 @@ def verify_email(token):
         flash('¡Tu correo ha sido verificado exitosamente! Ya puedes iniciar sesión.', 'success')
         return redirect(url_for(AUTH_LOGIN))
     except Exception as e:
-        from flask import current_app
-        db.session.rollback()
-        current_app.logger.error(f'Error en verify_email: {str(e)}')
+        log_db_error('verify_email', e)
         flash('Error al verificar el correo electrónico', 'danger')
         return redirect(url_for('index'))
 
@@ -414,8 +409,6 @@ def resend_verification():
         
         return render_template('auth/resend_verification.html')
     except Exception as e:
-        from flask import current_app
-        db.session.rollback()
-        current_app.logger.error(f'Error en resend_verification: {str(e)}')
+        log_db_error('resend_verification', e)
         flash('Error al reenviar el correo de verificación', 'danger')
         return redirect(url_for(AUTH_LOGIN))

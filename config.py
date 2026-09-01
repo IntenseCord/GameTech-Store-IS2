@@ -30,7 +30,7 @@ class Config:
                 try:
                     import psycopg2
                 except Exception:
-                    print("⚠️  PostgreSQL driver no disponible. Usando SQLite local como fallback.")
+                    print("AVISO: PostgreSQL driver no disponible. Usando SQLite local como fallback.")
                     instance_path = Path(__file__).parent / 'instance'
                     db_file = instance_path / 'gametech_store.db'
                     db_url = f'sqlite:///{db_file}'
@@ -93,7 +93,7 @@ class DevelopmentConfig(Config):
                 secret_key = secrets.token_hex(32)
                 with open(secret_file, 'w') as f:
                     f.write(secret_key)
-                print("⚠️  SECRET_KEY generada y guardada en .dev_secret_key")
+                print("AVISO: SECRET_KEY generada y guardada en .dev_secret_key")
             
             app.config['SECRET_KEY'] = secret_key
 

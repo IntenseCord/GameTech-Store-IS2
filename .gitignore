@@ -53,6 +53,7 @@ static/uploads/
 secrets.json
 *.key
 *.pem
+.dev_secret_key
 
 # Testing
 .pytest_cache/

@@ -8,6 +8,7 @@ from flask_wtf.csrf import CSRFProtect
 from extensions import db
 from models.database_models import CartItem, Game, Hardware, Order, OrderItem
 from utils.email_service import send_order_confirmation_email
+from utils.error_handling import log_db_error
 
 PRODUCTO_ELIMINADO = 'Producto eliminado del carrito'
 STOCK_INSUFICIENTE = 'Stock insuficiente'
@@ -64,8 +65,7 @@ def agregar_al_carrito():
         db.session.commit()
         return responder_exito(message)
     except Exception as e:
-        db.session.rollback()
-        print(f"Error al agregar al carrito: {e}")
+        log_db_error('agregar_al_carrito', e)
         return responder_error(f'Error al agregar al carrito: {str(e)}', 500)
 
 def validar_tipo_producto(product_type):
@@ -161,9 +161,7 @@ def actualizar_cantidad(item_id):
         db.session.commit()
         return redirect(url_for(VER_CARRITO))
     except Exception as e:
-        from flask import current_app
-        db.session.rollback()
-        current_app.logger.error(f'Error en actualizar_cantidad: {str(e)}')
+        log_db_error('actualizar_cantidad', e)
         flash('Error al actualizar la cantidad', 'danger')
         return redirect(url_for(VER_CARRITO))
 
@@ -194,9 +192,7 @@ def eliminar_del_carrito(item_id):
         flash(PRODUCTO_ELIMINADO, 'success')
         return redirect(url_for(VER_CARRITO))
     except Exception as e:
-        from flask import current_app
-        db.session.rollback()
-        current_app.logger.error(f'Error en eliminar_del_carrito: {str(e)}')
+        log_db_error('eliminar_del_carrito', e)
         if request.is_json:
             return jsonify({'success': False, 'message': 'Error al eliminar item'}), 500
         flash('Error al eliminar el item', 'danger')
@@ -213,9 +209,7 @@ def vaciar_carrito():
         flash('Carrito vaciado', 'info')
         return redirect(url_for(VER_CARRITO))
     except Exception as e:
-        from flask import current_app
-        db.session.rollback()
-        current_app.logger.error(f'Error en vaciar_carrito: {str(e)}')
+        log_db_error('vaciar_carrito', e)
         flash('Error al vaciar el carrito', 'danger')
         return redirect(url_for(VER_CARRITO))
 
@@ -300,9 +294,7 @@ def checkout():
                 return redirect(url_for('cart.orden_confirmada', order_id=order.id))
                 
             except Exception as e:
-                db.session.rollback()
-                from flask import current_app
-                current_app.logger.error(f'Error en transacción de checkout: {str(e)}')
+                log_db_error('checkout', e)
                 flash('Error al procesar la transacción', 'danger')
                 return redirect(url_for(VER_CARRITO))
         

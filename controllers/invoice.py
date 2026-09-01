@@ -8,6 +8,7 @@ from flask_mail import Message
 from extensions import db
 from models.database_models import Invoice, Order, User
 from utils.invoice_generator_colombia import InvoiceGeneratorColombia as InvoiceGenerator
+from utils.error_handling import log_db_error
 import os
 from datetime import datetime
 
@@ -50,8 +51,7 @@ def solicitar_factura(order_id):
             flash(f'¡Factura generada exitosamente! Folio: {invoice.folio}', 'success')
             return redirect(url_for(CART_ORDENES))
         except Exception as e:
-            db.session.rollback()
-            current_app.logger.error(f'Error generando factura: {str(e)}')
+            log_db_error('solicitar_factura', e)
             _traceback_log()
             flash(f'Error al generar la factura: {str(e)}', 'danger')
             return render_template(SOLICITAR_FACTURA, order=order, user=current_user)
