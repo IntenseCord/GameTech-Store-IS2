@@ -55,6 +55,9 @@ secrets.json
 *.pem
 .dev_secret_key
 
+# Estado interno de sesiones de Claude Code (no es parte del proyecto)
+.claude/scheduled_tasks.lock
+
 # Testing
 .pytest_cache/
 .coverage

@@ -31,7 +31,8 @@ def seed_database():
             username='admin',
             email='admin@gametechstore.com',
             password_hash=generate_password_hash(admin_password),
-            is_admin=True  # Aseguramos que el usuario admin tenga permisos de administrador
+            is_admin=True,  # Aseguramos que el usuario admin tenga permisos de administrador
+            email_verified=True  # Cuenta de sistema creada por el propio backend, no requiere verificación
         )
         db.session.add(admin)
     

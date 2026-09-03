@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Confirma tu inicio de sesión</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            max-width: 600px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        .container {
+            background-color: #f8f9fa;
+            border-radius: 10px;
+            padding: 30px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        .logo {
+            font-size: 32px;
+            font-weight: bold;
+            color: #0d6efd;
+            margin-bottom: 10px;
+        }
+        .content {
+            background-color: white;
+            padding: 25px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+        }
+        .button {
+            display: inline-block;
+            padding: 12px 30px;
+            background-color: #0d6efd;
+            color: white;
+            text-decoration: none;
+            border-radius: 5px;
+            font-weight: bold;
+            margin: 20px 0;
+        }
+        .button:hover {
+            background-color: #0b5ed7;
+        }
+        .footer {
+            text-align: center;
+            font-size: 12px;
+            color: #6c757d;
+            margin-top: 20px;
+        }
+        .warning {
+            background-color: #fff3cd;
+            border-left: 4px solid #ffc107;
+            padding: 15px;
+            margin-top: 20px;
+            border-radius: 4px;
+        }
+        .details {
+            background-color: #f8f9fa;
+            padding: 12px;
+            border-radius: 4px;
+            font-size: 13px;
+            margin-top: 10px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <div class="logo">🎮 GameTech Store</div>
+            <h2>Confirma tu Inicio de Sesión</h2>
+        </div>
+
+        <div class="content">
+            <p>Hola <strong>{{ username }}</strong>,</p>
+
+            <p>Detectamos un inicio de sesión que requiere confirmación adicional{{ ' desde una dirección IP nueva' if reason == 'ip' else ' porque hace tiempo que no ingresabas a tu cuenta' }}.</p>
+
+            <div class="details">
+                <strong>Dirección IP:</strong> {{ ip_address }}
+            </div>
+
+            <p>Si fuiste tú, confirma el inicio de sesión haciendo clic en el siguiente botón:</p>
+
+            <div style="text-align: center;">
+                <a href="{{ verification_url }}" class="button">Confirmar Inicio de Sesión</a>
+            </div>
+
+            <p>O copia y pega este enlace en tu navegador:</p>
+            <p style="word-break: break-all; background-color: #f8f9fa; padding: 10px; border-radius: 4px; font-size: 12px;">
+                {{ verification_url }}
+            </p>
+
+            <div class="warning">
+                <strong>⏰ Importante:</strong> Este enlace expirará en 30 minutos por seguridad.
+            </div>
+        </div>
+
+        <div class="footer">
+            <p>Si no fuiste tú quien intentó iniciar sesión, ignora este correo y considera cambiar tu contraseña.</p>
+            <p>&copy; 2024 GameTech Store. Todos los derechos reservados.</p>
+        </div>
+    </div>
+</body>
+</html>

@@ -5,7 +5,7 @@ from flask_mail import Message
 from flask import render_template, url_for, current_app
 from extensions import mail
 import secrets
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 
 def generate_verification_token():
     """Generar un token único para verificación"""
@@ -111,6 +111,65 @@ El equipo de GameTech Store
 def get_token_expiry():
     """Obtener fecha de expiración del token (24 horas)"""
     return datetime.now() + timedelta(hours=24)
+
+def get_login_verification_expiry():
+    """Obtener fecha de expiración del token de reverificación de login (30 minutos)"""
+    return datetime.now(timezone.utc) + timedelta(minutes=30)
+
+def send_login_verification_email(user_email, username, token, ip_address, reason):
+    """
+    Enviar correo para confirmar un inicio de sesión que requiere reverificación
+
+    Args:
+        user_email: Email del usuario
+        username: Nombre de usuario
+        token: Token de reverificación de login
+        ip_address: Dirección IP desde la que se intenta iniciar sesión
+        reason: 'ip' (IP nueva) o 'stale' (mucho tiempo sin iniciar sesión)
+    """
+    try:
+        verification_url = url_for('auth.verify_login', token=token, _external=True)
+
+        msg = Message(
+            subject='Confirma tu inicio de sesión en GameTech Store',
+            sender=('GameTech Store', current_app.config.get('MAIL_DEFAULT_SENDER')),
+            recipients=[user_email]
+        )
+
+        msg.html = render_template(
+            'emails/verify_login.html',
+            username=username,
+            verification_url=verification_url,
+            ip_address=ip_address,
+            reason=reason
+        )
+
+        motivo = 'desde una dirección IP nueva' if reason == 'ip' else 'porque hace tiempo que no ingresabas a tu cuenta'
+        msg.body = f"""
+Hola {username},
+
+Detectamos un inicio de sesión que requiere confirmación adicional {motivo}.
+
+Dirección IP: {ip_address}
+
+Si fuiste tú, confirma el inicio de sesión visitando el siguiente enlace:
+
+{verification_url}
+
+Este enlace expirará en 30 minutos.
+
+Si no fuiste tú, ignora este correo y considera cambiar tu contraseña.
+
+Saludos,
+El equipo de GameTech Store
+        """
+
+        mail.send(msg)
+        return True
+
+    except Exception as e:
+        print(f"Error al enviar correo de reverificación de login: {e}")
+        return False
 
 def send_order_confirmation_email(user_email, username, order):
     """

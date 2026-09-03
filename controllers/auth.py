@@ -6,7 +6,10 @@ from flask_login import login_user, logout_user, login_required, current_user
 from flask_mail import Message
 from extensions import db, mail
 from models.database_models import User
-from utils.email_service import send_verification_email, generate_verification_token, get_token_expiry, send_welcome_email
+from utils.email_service import (
+    send_verification_email, generate_verification_token, get_token_expiry, send_welcome_email,
+    send_login_verification_email, get_login_verification_expiry
+)
 from utils.rate_limiter import limiter, rate_limit_login, rate_limit_register
 from utils.error_handling import log_db_error
 import re
@@ -17,6 +20,9 @@ AUTH_REGISTRO = 'auth/registro.html'
 RESET_PASSWORD = 'auth/reset_password.html'
 AUTH_LOGIN = 'auth.login'
 AUTH_LOGIN_HTML = 'auth/login.html'
+
+# Días de inactividad tras los cuales se exige reverificar el login por correo
+LOGIN_STALE_DAYS = 30
 
 # Patrones de validación de contraseña
 PATTERN_LOWERCASE = r'[a-z]'
@@ -119,11 +125,19 @@ def login():
             if not user.email_verified:
                 flash('Debes verificar tu correo electrónico antes de iniciar sesión. Revisa tu bandeja de entrada.', 'warning')
                 return render_template(AUTH_LOGIN_HTML, show_resend_link=True, user_email=user.email)
-            
+
+            # Verificar si este login requiere reverificación (IP nueva o sesión inactiva por mucho tiempo)
+            razon_reverificacion = motivo_reverificacion_login(user, request.remote_addr)
+            if razon_reverificacion:
+                enviar_verificacion_login(user, request.remote_addr, razon_reverificacion)
+                flash('Por seguridad, te enviamos un correo para confirmar este inicio de sesión. Revisa tu bandeja de entrada.', 'info')
+                return render_template(AUTH_LOGIN_HTML)
+
             # Login exitoso
             login_user(user, remember=remember)
+            registrar_login_exitoso(user, request.remote_addr)
             flash(f'¡Bienvenido {user.username}!', 'success')
-            
+
             # Redirigir a la página solicitada o al inicio
             next_page = request.args.get('next')
             return redirect(url_for(next_page)) if next_page else redirect(url_for('index'))
@@ -134,6 +148,65 @@ def login():
             # Para simplicidad, solo mostramos el mensaje
     
     return render_template(AUTH_LOGIN_HTML)
+
+def motivo_reverificacion_login(user, ip_actual):
+    """Determina si un login requiere reverificación por correo.
+
+    Devuelve 'ip' si la IP cambió, 'stale' si pasó demasiado tiempo desde el
+    último login, o None si el login puede proceder normalmente. El primer
+    login de una cuenta (last_login_at nulo) nunca requiere reverificación,
+    ya que el registro ya exigió verificar el correo.
+    """
+    if user.last_login_at is None:
+        return None
+
+    if user.last_login_ip and user.last_login_ip != ip_actual:
+        return 'ip'
+
+    dias_inactivo = (datetime.now(timezone.utc) - user.last_login_at.replace(tzinfo=timezone.utc)).days
+    if dias_inactivo >= LOGIN_STALE_DAYS:
+        return 'stale'
+
+    return None
+
+def enviar_verificacion_login(user, ip_actual, razon):
+    """Genera un token de reverificación de login y envía el correo correspondiente."""
+    user.login_verification_token = generate_verification_token()
+    user.login_verification_expiry = get_login_verification_expiry()
+    db.session.commit()
+    send_login_verification_email(user.email, user.username, user.login_verification_token, ip_actual, razon)
+
+def registrar_login_exitoso(user, ip_actual):
+    """Actualiza los datos de último login tras una autenticación exitosa."""
+    user.last_login_at = datetime.now(timezone.utc)
+    user.last_login_ip = ip_actual
+    db.session.commit()
+
+@auth_bp.route('/verify-login/<token>')
+def verify_login(token):
+    """Confirmar un inicio de sesión que requería reverificación por correo"""
+    try:
+        user = User.query.filter_by(login_verification_token=token).first()
+
+        if not user:
+            flash('Enlace de confirmación inválido o ya utilizado.', 'danger')
+            return redirect(url_for(AUTH_LOGIN))
+
+        expiry = user.login_verification_expiry
+        if not expiry or datetime.now(timezone.utc) > expiry.replace(tzinfo=timezone.utc):
+            flash('El enlace de confirmación ha expirado. Por favor, inicia sesión de nuevo.', 'danger')
+            return redirect(url_for(AUTH_LOGIN))
+
+        user.login_verification_token = None
+        user.login_verification_expiry = None
+        login_user(user)
+        registrar_login_exitoso(user, request.remote_addr)
+        flash(f'¡Bienvenido de nuevo, {user.username}!', 'success')
+        return redirect(url_for('index'))
+    except Exception as e:
+        log_db_error('verify_login', e)
+        flash('Error al confirmar el inicio de sesión', 'danger')
+        return redirect(url_for(AUTH_LOGIN))
 
 @auth_bp.route('/logout')
 @login_required
