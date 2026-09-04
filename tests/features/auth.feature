@@ -21,7 +21,7 @@ Feature: Autenticación de usuarios
     And confirmo la contraseña "Test12345"
     And envío el formulario de registro
     Then el usuario no debería ser creado
-    Y debería ver un mensaje de error
+    And debería ver un mensaje de error
 
   Scenario: Registro con contraseña inválida
     Given estoy en la página de registro
@@ -31,14 +31,14 @@ Feature: Autenticación de usuarios
     And confirmo la contraseña "test1234"
     And envío el formulario de registro
     Then el usuario no debería ser creado
-    Y debería ver un mensaje de error
+    And debería ver un mensaje de error
 
   Scenario: Login exitoso
     Given existe un usuario con nombre "testuser" y contraseña "Test1234"
     When voy a la página de login
     And ingreso el nombre de usuario "testuser"
     And ingreso la contraseña "Test1234"
-    Y envío el formulario de login
+    And envío el formulario de login
     Then debería ser redirigido a la página principal
 
   Scenario: Login fallido con contraseña incorrecta
@@ -46,12 +46,12 @@ Feature: Autenticación de usuarios
     When voy a la página de login
     And ingreso el nombre de usuario "testuser"
     And ingreso la contraseña incorrecta "WrongPassword"
-    Y envío el formulario de login
+    And envío el formulario de login
     Then debería permanecer en la página de login
-    Y debería ver un mensaje de error
+    And debería ver un mensaje de error
 
   Scenario: Logout exitoso
     Given estoy logueado como usuario "testuser"
     When voy a la página de logout
     Then debería ser redirigido a la página principal
-    Y no debería estar logueado
+    And no debería estar logueado

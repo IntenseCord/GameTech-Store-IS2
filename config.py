@@ -128,6 +128,10 @@ class TestingConfig(Config):
     SQLALCHEMY_DATABASE_URI = 'sqlite:///:memory:'
     WTF_CSRF_ENABLED = False
     SECRET_KEY = 'testing-secret-key-not-for-production'
+    # Los tests hacen muchos POST reales a /registro y /login en la misma
+    # sesión de pytest; sin esto, Flask-Limiter empieza a responder 429 a
+    # partir de cierto número de tests, sin relación con si el código está bien.
+    RATELIMIT_ENABLED = False
 
 
 config = {
