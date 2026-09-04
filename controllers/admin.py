@@ -4,6 +4,7 @@ Controlador del panel de administración
 from flask import Blueprint, render_template, redirect, url_for, flash, request
 from flask_login import login_required, current_user
 from functools import wraps
+from sqlalchemy.exc import SQLAlchemyError
 from extensions import db
 from models.database_models import User, Game, Hardware, Order, OrderItem
 from werkzeug.utils import secure_filename
@@ -77,7 +78,7 @@ def toggle_admin(user_id):
             db.session.commit()
             flash(f'Rol de administrador actualizado para {user.username}', 'success')
         return redirect(url_for('admin.usuarios'))
-    except Exception as e:
+    except SQLAlchemyError as e:
         log_db_error('toggle_admin', e)
         flash('Error al actualizar rol de administrador', 'danger')
         return redirect(url_for('admin.usuarios'))
@@ -184,7 +185,7 @@ def nuevo_juego():
                 db.session.commit()
                 flash('Juego creado exitosamente', 'success')
                 return redirect(url_for(ADMIN_JUEGOS))
-            except Exception as e:
+            except SQLAlchemyError as e:
                 log_db_error('nuevo_juego', e)
                 flash(f'Error al crear juego: {str(e)}', 'danger')
         
@@ -244,7 +245,7 @@ def editar_juego(game_id):
                 db.session.commit()
                 flash('Juego actualizado exitosamente', 'success')
                 return redirect(url_for(ADMIN_JUEGOS))
-            except Exception as e:
+            except SQLAlchemyError as e:
                 log_db_error('editar_juego', e)
                 flash(f'Error al actualizar juego: {str(e)}', 'danger')
         
@@ -354,7 +355,7 @@ def nuevo_hardware():
                 db.session.commit()
                 flash('Componente creado exitosamente', 'success')
                 return redirect(url_for(ADMIN_HARDWARE))
-            except Exception as e:
+            except SQLAlchemyError as e:
                 log_db_error('nuevo_hardware', e)
                 flash(f'Error al crear componente: {str(e)}', 'danger')
         
@@ -412,7 +413,7 @@ def editar_hardware(hardware_id):
                 db.session.commit()
                 flash('Componente actualizado exitosamente', 'success')
                 return redirect(url_for(ADMIN_HARDWARE))
-            except Exception as e:
+            except SQLAlchemyError as e:
                 log_db_error('editar_hardware', e)
                 flash(f'Error al actualizar componente: {str(e)}', 'danger')
         
@@ -466,7 +467,7 @@ def actualizar_estado_orden(order_id):
         else:
             flash('Estado inválido', 'danger')
         return redirect(url_for('admin.ver_orden', order_id=order_id))
-    except Exception as e:
+    except SQLAlchemyError as e:
         log_db_error('actualizar_estado_orden', e)
         flash('Error al actualizar estado de la orden', 'danger')
         return redirect(url_for('admin.ver_orden', order_id=order_id))
@@ -489,7 +490,7 @@ def eliminar_juego(game_id):
         db.session.commit()
         flash('Juego eliminado exitosamente', 'success')
         return redirect(url_for(ADMIN_JUEGOS))
-    except Exception as e:
+    except SQLAlchemyError as e:
         log_db_error('eliminar_juego', e)
         flash(f'Error al eliminar juego: {str(e)}', 'danger')
         return redirect(url_for(ADMIN_JUEGOS))
@@ -512,7 +513,7 @@ def eliminar_hardware(hardware_id):
         db.session.commit()
         flash('Componente eliminado exitosamente', 'success')
         return redirect(url_for(ADMIN_HARDWARE))
-    except Exception as e:
+    except SQLAlchemyError as e:
         log_db_error('eliminar_hardware', e)
         flash(f'Error al eliminar componente: {str(e)}', 'danger')
         return redirect(url_for(ADMIN_HARDWARE))

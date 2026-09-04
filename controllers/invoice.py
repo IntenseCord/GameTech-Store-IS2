@@ -5,6 +5,7 @@ Maneja la solicitud, generación y envío de facturas por correo
 from flask import Blueprint, render_template, request, redirect, url_for, flash, send_file, jsonify, current_app
 from flask_login import login_required, current_user
 from flask_mail import Message
+from sqlalchemy.exc import SQLAlchemyError
 from extensions import db
 from models.database_models import Invoice, Order, User
 from utils.invoice_generator_colombia import InvoiceGeneratorColombia as InvoiceGenerator
@@ -50,7 +51,8 @@ def solicitar_factura(order_id):
             db.session.commit()
             flash(f'¡Factura generada exitosamente! Folio: {invoice.folio}', 'success')
             return redirect(url_for(CART_ORDENES))
-        except Exception as e:
+        except (SQLAlchemyError, OSError) as e:
+            # SQLAlchemyError: fallo de BD al guardar la factura. OSError: fallo al escribir el PDF a disco.
             log_db_error('solicitar_factura', e)
             _traceback_log()
             flash(f'Error al generar la factura: {str(e)}', 'danger')

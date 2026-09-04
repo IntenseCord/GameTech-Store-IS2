@@ -5,6 +5,7 @@ Controlador del carrito de compras
 from flask import Blueprint, render_template, request, redirect, url_for, flash, jsonify
 from flask_login import login_required, current_user
 from flask_wtf.csrf import CSRFProtect
+from sqlalchemy.exc import SQLAlchemyError
 from extensions import db
 from models.database_models import CartItem, Game, Hardware, Order, OrderItem
 from utils.email_service import send_order_confirmation_email
@@ -64,9 +65,13 @@ def agregar_al_carrito():
         message = actualizar_carrito(product_type, product_id, quantity)
         db.session.commit()
         return responder_exito(message)
-    except Exception as e:
+    except ValueError as e:
+        # Errores de validación de negocio (stock insuficiente, cantidad inválida), no de BD
+        db.session.rollback()
+        return responder_error(str(e), 400)
+    except SQLAlchemyError as e:
         log_db_error('agregar_al_carrito', e)
-        return responder_error(f'Error al agregar al carrito: {str(e)}', 500)
+        return responder_error('Error al agregar al carrito', 500)
 
 def validar_tipo_producto(product_type):
     """Valida que el tipo de producto sea válido."""
@@ -160,7 +165,7 @@ def actualizar_cantidad(item_id):
         
         db.session.commit()
         return redirect(url_for(VER_CARRITO))
-    except Exception as e:
+    except SQLAlchemyError as e:
         log_db_error('actualizar_cantidad', e)
         flash('Error al actualizar la cantidad', 'danger')
         return redirect(url_for(VER_CARRITO))
@@ -191,7 +196,7 @@ def eliminar_del_carrito(item_id):
         
         flash(PRODUCTO_ELIMINADO, 'success')
         return redirect(url_for(VER_CARRITO))
-    except Exception as e:
+    except SQLAlchemyError as e:
         log_db_error('eliminar_del_carrito', e)
         if request.is_json:
             return jsonify({'success': False, 'message': 'Error al eliminar item'}), 500
@@ -208,7 +213,7 @@ def vaciar_carrito():
         
         flash('Carrito vaciado', 'info')
         return redirect(url_for(VER_CARRITO))
-    except Exception as e:
+    except SQLAlchemyError as e:
         log_db_error('vaciar_carrito', e)
         flash('Error al vaciar el carrito', 'danger')
         return redirect(url_for(VER_CARRITO))
@@ -230,8 +235,7 @@ def checkout():
             try:
                 # Bloquear filas de productos para evitar condiciones de carrera
                 # Usar FOR UPDATE para bloquear las filas en PostgreSQL
-                from sqlalchemy import text
-                
+
                 # Obtener IDs de productos en el carrito
                 game_ids = [item.product_id for item in cart_items if item.product_type == 'game']
                 hardware_ids = [item.product_id for item in cart_items if item.product_type == 'hardware']
@@ -286,17 +290,21 @@ def checkout():
                 CartItem.query.filter_by(user_id=current_user.id).delete()
                 
                 db.session.commit()
-
-                # Enviar correo de confirmación de compra
-                send_order_confirmation_email(current_user.email, current_user.username, order)
-
-                flash(f'¡Compra realizada con éxito! Orden #{order.id}', 'success')
-                return redirect(url_for('cart.orden_confirmada', order_id=order.id))
-                
-            except Exception as e:
+            except SQLAlchemyError as e:
                 log_db_error('checkout', e)
                 flash('Error al procesar la transacción', 'danger')
                 return redirect(url_for(VER_CARRITO))
+
+            # La orden ya quedó guardada en este punto: un fallo al enviar el correo
+            # de confirmación no debe hacer creer al usuario que la compra falló.
+            try:
+                send_order_confirmation_email(current_user.email, current_user.username, order)
+            except Exception as e:
+                from flask import current_app
+                current_app.logger.error(f'Error enviando correo de confirmación de orden {order.id}: {e}')
+
+            flash(f'¡Compra realizada con éxito! Orden #{order.id}', 'success')
+            return redirect(url_for('cart.orden_confirmada', order_id=order.id))
         
         # Calcular total para mostrar
         total = sum(item.get_subtotal() for item in cart_items)
