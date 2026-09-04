@@ -69,8 +69,8 @@
                         <span class="text-success">GRATIS</span>
                     </div>
                     <div class="d-flex justify-content-between mb-2">
-                        <span>IVA (incluido):</span>
-                        <span>${{ "%.2f"|format(total * 0.16) }}</span>
+                        <span>IVA (19%, incluido):</span>
+                        <span>${{ "%.2f"|format((total|float) - ((total|float) / 1.19)) }}</span>
                     </div>
                     <hr>
                     <div class="d-flex justify-content-between">

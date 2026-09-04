@@ -38,6 +38,22 @@ def test_agregar_al_carrito_excede_stock_devuelve_400_no_500(client, test_user, 
     assert item.quantity == 3
 
 
+def test_pagina_checkout_no_crashea_con_total_decimal(client, test_user, test_game):
+    """Regresión crítica: item.get_subtotal() devuelve Decimal (precio es NUMERIC),
+    y el template hacía `total * 0.16` directo — Python no permite Decimal * float.
+    El checkout.py::checkout() atrapa la excepción con un except genérico y
+    redirige silenciosamente al carrito con un error confuso: nadie podía
+    completar una compra, sin que se viera como un crash."""
+    login(client)
+    client.post('/carrito/agregar', json={
+        'product_type': 'game', 'product_id': test_game.id, 'quantity': 1
+    })
+
+    response = client.get('/carrito/checkout')
+
+    assert response.status_code == 200
+
+
 def test_checkout_exitoso_aunque_falle_envio_de_correo(client, test_user, test_game, monkeypatch):
     """Antes del fix, un fallo de SMTP durante el envío de confirmación (dentro del
     mismo try que la transacción de BD) hacía creer al usuario que la compra había
