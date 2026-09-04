@@ -245,13 +245,16 @@ function initializeProductComparison() {
  */
 function initializeImageGallery() {
     const galleryImages = document.querySelectorAll('.gallery-image');
- 
-    for (const t of galleryImages) {
-            t.classList.remove('active');
-        }
 
-        this.classList.add('active');
-    };
+    for (const img of galleryImages) {
+        img.addEventListener('click', function() {
+            for (const t of galleryImages) {
+                t.classList.remove('active');
+            }
+            this.classList.add('active');
+        });
+    }
+}
 
 
 /**

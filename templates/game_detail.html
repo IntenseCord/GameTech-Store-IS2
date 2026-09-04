@@ -177,10 +177,8 @@
 {% block extra_js %}
 <script>
 document.addEventListener('DOMContentLoaded', function() {
-    // Botones de acción
-    document.getElementById('add-to-cart-btn').addEventListener('click', function() {
-        showToast('Producto agregado al carrito', 'success');
-    });
+    // El botón de "agregar al carrito" (.add-to-cart-btn) ya lo maneja
+    // main.js::initializeShoppingCart() con la petición real a /carrito/agregar.
 
     document.getElementById('add-to-wishlist-btn').addEventListener('click', function() {
         showToast('Agregado a lista de deseos', 'info');
