@@ -511,9 +511,11 @@ class Invoice(db.Model):
     @classmethod
     def create_from_order(cls, order, user_fiscal_data):
         """Crear factura desde una orden (Colombia - DIAN)"""
-        # Calcular montos (IVA 19% en Colombia)
-        subtotal = order.total / 1.19
-        iva = order.total - subtotal
+        # Calcular montos (IVA 19% en Colombia). order.total es Decimal
+        # (columna NUMERIC); convertir a float antes de dividir entre 1.19.
+        total = float(order.total)
+        subtotal = total / 1.19
+        iva = total - subtotal
         
         invoice = cls(
             uuid=cls.generate_uuid(),

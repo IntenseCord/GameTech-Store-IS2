@@ -184,8 +184,8 @@
                         <!-- Resumen -->
                         <div class="alert alert-light">
                             <h6>Resumen de Factura:</h6>
-                            <p class="mb-1">Subtotal: ${{ "%.2f"|format(order.total / 1.19) }} COP</p>
-                            <p class="mb-1">IVA (19%): ${{ "%.2f"|format(order.total - (order.total / 1.19)) }} COP</p>
+                            <p class="mb-1">Subtotal: ${{ "%.2f"|format((order.total|float) / 1.19) }} COP</p>
+                            <p class="mb-1">IVA (19%): ${{ "%.2f"|format((order.total|float) - ((order.total|float) / 1.19)) }} COP</p>
                             <p class="mb-0"><strong>Total: ${{ "%.2f"|format(order.total) }} COP</strong></p>
                         </div>
 
