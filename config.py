@@ -30,7 +30,7 @@ class Config:
                 try:
                     import psycopg2
                 except Exception:
-                    print("⚠️  PostgreSQL driver no disponible. Usando SQLite local como fallback.")
+                    print("AVISO: PostgreSQL driver no disponible. Usando SQLite local como fallback.")
                     instance_path = Path(__file__).parent / 'instance'
                     db_file = instance_path / 'gametech_store.db'
                     db_url = f'sqlite:///{db_file}'
@@ -66,6 +66,12 @@ class Config:
     # Configuración de sesiones
     PERMANENT_SESSION_LIFETIME = 3600  # 1 hora
 
+    @staticmethod
+    def init_app(app):
+        """Hook de inicialización por ambiente. No-op por defecto; los ambientes
+        que necesiten pasos adicionales (Development, Production) lo sobrescriben."""
+        pass
+
 
 class DevelopmentConfig(Config):
     """Configuración de desarrollo"""
@@ -93,7 +99,7 @@ class DevelopmentConfig(Config):
                 secret_key = secrets.token_hex(32)
                 with open(secret_file, 'w') as f:
                     f.write(secret_key)
-                print("⚠️  SECRET_KEY generada y guardada en .dev_secret_key")
+                print("AVISO: SECRET_KEY generada y guardada en .dev_secret_key")
             
             app.config['SECRET_KEY'] = secret_key
 
@@ -121,6 +127,7 @@ class TestingConfig(Config):
     TESTING = True
     SQLALCHEMY_DATABASE_URI = 'sqlite:///:memory:'
     WTF_CSRF_ENABLED = False
+    SECRET_KEY = 'testing-secret-key-not-for-production'
 
 
 config = {

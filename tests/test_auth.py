@@ -3,6 +3,7 @@ Tests de autenticación
 """
 import pytest
 from flask import url_for
+from extensions import db
 from models.database_models import User
 
 
@@ -76,7 +77,27 @@ def test_logout(client, test_user):
         'username': 'testuser',
         'password': 'Test1234'
     })
-    
+
     # Logout
     response = client.get('/logout', follow_redirects=True)
     assert response.status_code == 200
+
+
+def test_recuperar_password_no_falla_si_smtp_falla(client, test_user, monkeypatch):
+    """Antes del fix, `mail.send()` estaba dentro del mismo try que el commit de BD
+    y se atrapaba con `except Exception` genérico junto con errores de BD reales.
+    El token de recuperación debe guardarse aunque el envío del correo falle."""
+    def fallar_envio(*args, **kwargs):
+        raise RuntimeError('SMTP no configurado')
+
+    monkeypatch.setattr('controllers.auth.mail.send', fallar_envio)
+
+    response = client.post('/recuperar-password', data={
+        'email': test_user.email
+    }, follow_redirects=False)
+
+    # No debe ser un 500: el fallo de correo se registra pero no interrumpe el flujo
+    assert response.status_code == 302
+
+    db.session.refresh(test_user)
+    assert test_user.reset_token is not None

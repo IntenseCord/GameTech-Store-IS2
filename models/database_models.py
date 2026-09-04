@@ -28,6 +28,12 @@ class User(db.Model):
     email_verified = db.Column(db.Boolean, default=False)
     verification_token = db.Column(db.String(255), unique=True, nullable=True)
     token_expiry = db.Column(db.DateTime, nullable=True)
+
+    # Reverificación de login (IP nueva o sesión inactiva por mucho tiempo)
+    last_login_at = db.Column(db.DateTime, nullable=True)
+    last_login_ip = db.Column(db.String(45), nullable=True)
+    login_verification_token = db.Column(db.String(255), unique=True, nullable=True)
+    login_verification_expiry = db.Column(db.DateTime, nullable=True)
     
     # Datos fiscales
     rfc = db.Column(db.String(13), nullable=True)

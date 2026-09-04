@@ -1,6 +1,20 @@
 """
 Configuración de fixtures para pytest y pytest-bdd
 """
+import os
+
+# CRÍTICO: forzar SQLite en memoria ANTES de importar `app`. app.py calcula
+# SQLALCHEMY_DATABASE_URI/SQLALCHEMY_ENGINE_OPTIONS a partir de DATABASE_URL
+# al momento de importarse (Config.get_database_url() ignora FLASK_ENV/TestingConfig
+# y siempre lee esa variable), y Flask-SQLAlchemy cachea el engine en ese instante.
+# Sobrescribir app.config DESPUÉS de importar (como se hacía antes) no tiene ningún
+# efecto sobre el engine ya construido: los tests terminaban corriendo db.create_all()/
+# db.drop_all() contra la base de datos real de Neon en vez de SQLite. os.environ.setdefault
+# respeta un DATABASE_URL que ya esté seteado en el proceso (no debería estarlo aquí,
+# pero así load_dotenv() tampoco lo pisa al no usar override=True).
+os.environ['DATABASE_URL'] = 'sqlite:///:memory:'
+os.environ['FLASK_ENV'] = 'testing'
+
 import pytest
 from app import app
 from extensions import db
