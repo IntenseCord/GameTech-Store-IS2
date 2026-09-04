@@ -49,6 +49,9 @@ Thumbs.db
 # Uploads
 static/uploads/
 
+# PDFs de facturas generados en tiempo de ejecución (incluye los que generan los tests)
+static/invoices/
+
 # Secrets and keys
 secrets.json
 *.key

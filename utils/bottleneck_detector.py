@@ -97,7 +97,7 @@ class BottleneckDetector:
        }
 
     @staticmethod
-    def _update_result(result, severity, percent, desc, rec, multiplier, cpu_score, gpu_score, kind):
+    def _update_result(result, severity, percent, multiplier, desc, rec, cpu_score, gpu_score, kind):
         result['severity'] = severity
         result['percentage_loss'] = percent
         result['description'] = desc

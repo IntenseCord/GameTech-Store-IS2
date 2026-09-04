@@ -2,7 +2,7 @@
 Utilidad para enviar correos electrónicos
 """
 from flask_mail import Message
-from flask import current_app, render_template_string
+from flask import current_app
 from extensions import mail
 import os
 
@@ -178,102 +178,4 @@ def enviar_factura_por_email(invoice, user, pdf_path):
         
     except Exception as e:
         current_app.logger.error(f'Error enviando factura por email: {str(e)}')
-        return False
-
-
-def enviar_notificacion_orden(order, user):
-    """
-    Enviar notificación de orden procesada
-    
-    Args:
-        order: Objeto Order
-        user: Objeto User
-    """
-    try:
-        msg = Message(
-            subject=f'Orden #{order.id} Confirmada - GameTech Store',
-            recipients=[user.email],
-            sender=current_app.config['MAIL_DEFAULT_SENDER']
-        )
-        
-        # Construir lista de productos
-        productos_html = ""
-        for item in order.items:
-            productos_html += f"""
-            <div style="padding: 10px; border-bottom: 1px solid #e0e0e0;">
-                <strong>{item.product_name}</strong> x{item.quantity} - ${item.get_subtotal():,.2f} COP
-            </div>
-            """
-        
-        html_body = f"""
-        <!DOCTYPE html>
-        <html>
-        <head>
-            <style>
-                body {{
-                    font-family: Arial, sans-serif;
-                    line-height: 1.6;
-                    color: #333;
-                }}
-                .container {{
-                    max-width: 600px;
-                    margin: 0 auto;
-                    padding: 20px;
-                }}
-                .header {{
-                    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-                    color: white;
-                    padding: 30px;
-                    text-align: center;
-                    border-radius: 10px 10px 0 0;
-                }}
-                .content {{
-                    background: #f8f9fa;
-                    padding: 30px;
-                    border-radius: 0 0 10px 10px;
-                }}
-            </style>
-        </head>
-        <body>
-            <div class="container">
-                <div class="header">
-                    <h1>✅ ¡Orden Confirmada!</h1>
-                </div>
-                <div class="content">
-                    <p>Hola <strong>{user.username}</strong>,</p>
-                    <p>Tu orden ha sido procesada exitosamente.</p>
-                    
-                    <div style="background: white; padding: 20px; border-radius: 8px; margin: 20px 0;">
-                        <h3>Orden #{order.id}</h3>
-                        <p><strong>Fecha:</strong> {order.created_at.strftime('%d/%m/%Y %H:%M')}</p>
-                        <p><strong>Estado:</strong> {order.status}</p>
-                        
-                        <h4>Productos:</h4>
-                        {productos_html}
-                        
-                        <div style="margin-top: 20px; padding-top: 20px; border-top: 2px solid #667eea;">
-                            <p style="font-size: 20px; text-align: right;">
-                                <strong>Total: ${order.total:,.2f} COP</strong>
-                            </p>
-                        </div>
-                    </div>
-                    
-                    <p>Puedes solicitar tu factura electrónica desde tu perfil.</p>
-                    
-                    <p style="text-align: center; margin-top: 30px;">
-                        <strong>¡Gracias por tu compra!</strong>
-                    </p>
-                </div>
-            </div>
-        </body>
-        </html>
-        """
-        
-        msg.html = html_body
-        mail.send(msg)
-        current_app.logger.info(f'Notificación de orden {order.id} enviada a {user.email}')
-        return True
-        
-    except Exception as e:
-        current_app.logger.error(f'Error enviando notificación de orden: {str(e)}')
         return False

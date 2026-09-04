@@ -177,13 +177,33 @@
 {% block extra_js %}
 <script>
 document.addEventListener('DOMContentLoaded', function() {
-    // Botones de acción
-    document.getElementById('add-to-cart-btn').addEventListener('click', function() {
-        showToast('Producto agregado al carrito', 'success');
-    });
+    // El botón de "agregar al carrito" (.add-to-cart-btn) ya lo maneja
+    // main.js::initializeShoppingCart() con la petición real a /carrito/agregar.
+
+    const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
+    const jsonHeaders = { 'Content-Type': 'application/json' };
+    if (csrfToken) jsonHeaders['X-CSRFToken'] = csrfToken;
 
     document.getElementById('add-to-wishlist-btn').addEventListener('click', function() {
-        showToast('Agregado a lista de deseos', 'info');
+        fetch('/wishlist/agregar', {
+            method: 'POST',
+            headers: jsonHeaders,
+            body: JSON.stringify({ product_id: {{ juego.id }}, product_type: 'game' })
+        })
+        .then(response => {
+            if (response.redirected) {
+                showToast('Debes iniciar sesión para usar la lista de deseos', 'warning');
+                setTimeout(() => { window.location.href = '/login'; }, 2000);
+                return null;
+            }
+            return response.json();
+        })
+        .then(data => {
+            if (data) {
+                showToast(data.message, data.success ? 'success' : 'danger');
+            }
+        })
+        .catch(() => showToast('Error al agregar a la lista de deseos', 'danger'));
     });
 
     // Verificador de compatibilidad individual
@@ -202,10 +222,14 @@ document.addEventListener('DOMContentLoaded', function() {
         resultDiv.style.display = 'block';
         resultDiv.innerHTML = '<div class="text-center"><div class="spinner-border text-primary" role="status"></div></div>';
 
-        // Aquí harías la petición AJAX para verificar compatibilidad específica
-        // Por simplicidad, mostraremos un resultado simulado
-        setTimeout(() => {
-            const compatible = Math.random() > 0.3; // 70% de probabilidad de ser compatible
+        fetch('/consultar-compatibilidad', {
+            method: 'POST',
+            headers: jsonHeaders,
+            body: JSON.stringify({ cpu: cpu, gpu: gpu, ram: ram, storage: '' })
+        })
+        .then(response => response.json())
+        .then(data => {
+            const compatible = Boolean(data.success) && data.juegos.some(j => j.id === {{ juego.id }});
 
             if (compatible) {
                 resultDiv.innerHTML = `
@@ -222,7 +246,10 @@ document.addEventListener('DOMContentLoaded', function() {
                     </div>
                 `;
             }
-        }, 1000);
+        })
+        .catch(() => {
+            resultDiv.innerHTML = '<div class="alert alert-danger">Error al verificar compatibilidad. Intenta de nuevo.</div>';
+        });
     });
 
     function showToast(message, type) {

@@ -70,17 +70,18 @@ def update_hardware_benchmarks():
         not_found = []
 
         def update_hardware_properties(hardware, specs, tipo):
+            # (columna del modelo, clave en BENCHMARK_DATA, valor por defecto)
             props_map = {
                 'CPU': [
-                    ('cores', 0), ('threads', 0),
-                    ('frequency_ghz', 0.0), ('tdp_watts', 0)
+                    ('cores', 'cores', 0), ('threads', 'threads', 0),
+                    ('frequency_ghz', 'freq', 0.0), ('tdp_watts', 'tdp', 0)
                 ],
                 'GPU': [
-                    ('vram_gb', 0), ('tdp_watts', 0)
+                    ('vram_gb', 'vram', 0), ('tdp_watts', 'tdp', 0)
                 ]
             }
-            for prop, default in props_map.get(tipo, []):
-                setattr(hardware, prop, specs.get(prop, default))
+            for columna, clave, default in props_map.get(tipo, []):
+                setattr(hardware, columna, specs.get(clave, default))
 
         def process_component(tipo, model_name, specs):
             hardware_items = Hardware.query.filter(

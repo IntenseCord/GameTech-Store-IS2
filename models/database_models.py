@@ -128,6 +128,14 @@ class Game(db.Model):
             # Convertir hardware_specs a objetos Hardware para compatibilidad
             componentes = []
             for tipo, specs in hardware_specs.items():
+                # hardware_specs puede traer, por tipo, un dict de specs o
+                # texto libre (ej. "Intel Core i5-3570K", como llega desde
+                # /consultar-compatibilidad) — normalizar a dict antes de
+                # usar specs.get(...), que rompía con AttributeError si
+                # specs era un string.
+                if not isinstance(specs, dict):
+                    specs = {'marca': '', 'modelo': str(specs), 'capacidad': str(specs)}
+
                 # Crear un objeto Hardware temporal para la comparación
                 componente = Hardware(
                     tipo=tipo.upper(),
@@ -511,9 +519,11 @@ class Invoice(db.Model):
     @classmethod
     def create_from_order(cls, order, user_fiscal_data):
         """Crear factura desde una orden (Colombia - DIAN)"""
-        # Calcular montos (IVA 19% en Colombia)
-        subtotal = order.total / 1.19
-        iva = order.total - subtotal
+        # Calcular montos (IVA 19% en Colombia). order.total es Decimal
+        # (columna NUMERIC); convertir a float antes de dividir entre 1.19.
+        total = float(order.total)
+        subtotal = total / 1.19
+        iva = total - subtotal
         
         invoice = cls(
             uuid=cls.generate_uuid(),

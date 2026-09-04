@@ -47,6 +47,18 @@ def test_juego_detalle(client, test_game):
     assert response.status_code == 200
 
 
+def test_consultar_compatibilidad_no_crashea(client, test_game):
+    """Regresión: Game.get_games_by_hardware() esperaba que cada valor de
+    hardware_specs fuera un dict (specs.get('marca', '')), pero esta ruta le
+    pasa texto libre — crasheaba con AttributeError en cada llamada, sin
+    excepción, oculto por el except genérico de la ruta."""
+    response = client.post('/consultar-compatibilidad', json={
+        'cpu': 'Intel Core i5-3570K', 'gpu': 'NVIDIA GeForce GTX 780', 'ram': '8 GB', 'storage': ''
+    })
+    assert response.status_code == 200
+    assert response.get_json()['success'] is True
+
+
 def test_hardware_detalle(client, test_hardware):
     """Test de detalle de hardware"""
     response = client.get(f'/hardware/{test_hardware.id}')

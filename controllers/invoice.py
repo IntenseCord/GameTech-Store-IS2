@@ -9,6 +9,7 @@ from sqlalchemy.exc import SQLAlchemyError
 from extensions import db
 from models.database_models import Invoice, Order, User
 from utils.invoice_generator_colombia import InvoiceGeneratorColombia as InvoiceGenerator
+from utils.email_sender import enviar_factura_por_email
 from utils.error_handling import log_db_error
 import os
 from datetime import datetime
@@ -49,6 +50,12 @@ def solicitar_factura(order_id):
             invoice.pdf_path = pdf_path
 
             db.session.commit()
+
+            # La factura ya quedó guardada en este punto: un fallo al enviar el
+            # correo no debe hacer creer al usuario que la generación falló.
+            if not enviar_factura_por_email(invoice, current_user, pdf_path):
+                current_app.logger.warning(f'No se pudo enviar la factura {invoice.folio} por correo')
+
             flash(f'¡Factura generada exitosamente! Folio: {invoice.folio}', 'success')
             return redirect(url_for(CART_ORDENES))
         except (SQLAlchemyError, OSError) as e:
@@ -105,6 +112,10 @@ def _guardar_datos_usuario(datos):
 def _crear_objeto_factura(order, datos):
     import uuid as uuid_lib
     invoice_uuid = str(uuid_lib.uuid4())
+    # order.total es Decimal (columna NUMERIC); convertir a float antes de
+    # operar con 1.19, ya que Python no permite Decimal / float directamente.
+    total = float(order.total)
+    subtotal = total / 1.19
     return Invoice(
         uuid=invoice_uuid,
         order_id=order.id,
@@ -123,9 +134,9 @@ def _crear_objeto_factura(order, datos):
         nit_emisor='900123456-7',
         razon_social_emisor='GameTech Store SAS',
         regimen_emisor='Responsable de IVA',
-        subtotal=float(order.total / 1.19),
-        iva=float(order.total - (order.total / 1.19)),
-        total=float(order.total),
+        subtotal=subtotal,
+        iva=total - subtotal,
+        total=total,
         forma_pago=datos['forma_pago'] or 'Tarjeta de Crédito',
         metodo_pago='Contado',
         status='active',
@@ -208,17 +219,3 @@ def cancelar_factura(invoice_id):
     
     flash('Factura cancelada exitosamente', 'success')
     return redirect(url_for(VER_FACTURA, invoice_id=invoice_id))
-
-# Funciones auxiliares
-def generate_simple_seal(invoice):
-    """Generar sello digital simplificado (para demostración)"""
-    import hashlib
-    
-    # En producción, esto se haría con certificados digitales del SAT
-    data = f"{invoice.uuid}{invoice.rfc_emisor}{invoice.rfc_receptor}{invoice.total}{invoice.fecha_emision}"
-    return hashlib.sha256(data.encode()).hexdigest()
-
-def generate_cadena_original(invoice):
-    """Generar cadena original del comprobante"""
-    # Formato simplificado
-    return f"||{invoice.uuid}|{invoice.fecha_timbrado}|{invoice.rfc_emisor}|{invoice.rfc_receptor}|{invoice.total}||"

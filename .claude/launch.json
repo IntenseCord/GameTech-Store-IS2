@@ -5,10 +5,7 @@
       "name": "gametech-store-flask",
       "runtimeExecutable": "python",
       "runtimeArgs": ["app.py"],
-      "port": 5000,
-      "env": {
-        "ADMIN_PASSWORD": "DevAdmin123"
-      }
+      "port": 5000
     }
   ]
 }
