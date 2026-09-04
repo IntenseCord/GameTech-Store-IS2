@@ -66,6 +66,12 @@ class Config:
     # Configuración de sesiones
     PERMANENT_SESSION_LIFETIME = 3600  # 1 hora
 
+    @staticmethod
+    def init_app(app):
+        """Hook de inicialización por ambiente. No-op por defecto; los ambientes
+        que necesiten pasos adicionales (Development, Production) lo sobrescriben."""
+        pass
+
 
 class DevelopmentConfig(Config):
     """Configuración de desarrollo"""
@@ -121,6 +127,7 @@ class TestingConfig(Config):
     TESTING = True
     SQLALCHEMY_DATABASE_URI = 'sqlite:///:memory:'
     WTF_CSRF_ENABLED = False
+    SECRET_KEY = 'testing-secret-key-not-for-production'
 
 
 config = {
