@@ -40,3 +40,10 @@ def rate_limit_cart():
 def rate_limit_search():
     """Límite para búsquedas - 20 por minuto"""
     return "20 per minute"
+
+def rate_limit_email_sensible():
+    """Límite para rutas que envían correo a partir de un email arbitrario del
+    formulario (recuperar contraseña, reenviar verificación) - 3 por hora.
+    Sin esto, alguien puede bombardear el buzón de otra persona con correos
+    repetidos: el límite global (50/hora) es demasiado permisivo para esto."""
+    return "3 per hour"

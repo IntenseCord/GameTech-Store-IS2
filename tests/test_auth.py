@@ -186,3 +186,14 @@ def test_no_cambiar_email_no_toca_verificacion(client, test_user):
     db.session.refresh(test_user)
     assert test_user.email_verified is True
     assert test_user.verification_token is None
+
+# NOTA: /recuperar-password y /resend-verification ahora tienen
+# @limiter.limit(rate_limit_email_sensible) (ver utils/rate_limiter.py) para
+# no poder bombardear el buzón de otra persona con correos repetidos -- antes
+# solo aplicaba el límite global (50/hora). No hay un test automatizado de
+# esto: RATELIMIT_ENABLED=False en TestingConfig hace que Flask-Limiter nunca
+# registre sus hooks para la app de pytest (ver el comentario en config.py),
+# así que no puede reactivarse a mitad de la suite como sí se hace con CSRF.
+# Verificado manualmente: con una app separada arrancada con
+# RATELIMIT_ENABLED=True desde el inicio, las primeras 3 peticiones a
+# /recuperar-password devuelven 302 y la 4a y 5a devuelven 429.

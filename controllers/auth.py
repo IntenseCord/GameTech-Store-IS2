@@ -11,7 +11,7 @@ from utils.email_service import (
     send_verification_email, generate_verification_token, get_token_expiry, send_welcome_email,
     send_login_verification_email, get_login_verification_expiry
 )
-from utils.rate_limiter import limiter, rate_limit_login, rate_limit_register
+from utils.rate_limiter import limiter, rate_limit_login, rate_limit_register, rate_limit_email_sensible
 from utils.error_handling import log_db_error
 import re
 import secrets
@@ -309,6 +309,7 @@ def validate_password_security(password):
     )
 
 @auth_bp.route('/recuperar-password', methods=['GET', 'POST'])
+@limiter.limit(rate_limit_email_sensible, methods=['POST'])
 def recuperar_password():
     """Página para solicitar recuperación de contraseña"""
     try:
@@ -478,6 +479,7 @@ def verify_email(token):
         return redirect(url_for('index'))
 
 @auth_bp.route('/resend-verification', methods=['GET', 'POST'])
+@limiter.limit(rate_limit_email_sensible, methods=['POST'])
 def resend_verification():
     """Reenviar correo de verificación"""
     try:
