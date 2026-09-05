@@ -2,7 +2,7 @@
 Controlador para el analizador de hardware
 Permite a los usuarios analizar su configuración y ver compatibilidad con juegos
 """
-from flask import Blueprint, render_template, request, jsonify
+from flask import Blueprint, render_template, request, jsonify, current_app
 from models.database_models import Hardware, Game, GameRequirements
 from utils.bottleneck_detector import BottleneckDetector
 from utils.performance_calculator import PerformanceCalculator
@@ -58,14 +58,14 @@ def analyze_hardware():
         try:
             bottlenecks = BottleneckDetector.detect(cpu, gpu, ram)
         except Exception as e:
-            print(f"Error detecting bottleneck: {str(e)}")
+            current_app.logger.error(f"Error detecting bottleneck: {str(e)}")
             bottlenecks = {'has_bottleneck': False, 'recommendations': []}
         
         # 3. Analizar compatibilidad con juegos
         try:
             games_analysis = analyze_game_compatibility(cpu, gpu, ram)
         except Exception as e:
-            print(f"Error analyzing games: {str(e)}")
+            current_app.logger.error(f"Error analyzing games: {str(e)}")
             games_analysis = {
                 'can_run_ultra': [],
                 'can_run_high': [],
@@ -78,7 +78,7 @@ def analyze_hardware():
         try:
             recommendations = generate_recommendations(bottlenecks, system_score)
         except Exception as e:
-            print(f"Error generating recommendations: {str(e)}")
+            current_app.logger.error(f"Error generating recommendations: {str(e)}")
             recommendations = []
         
         return jsonify({
@@ -91,8 +91,7 @@ def analyze_hardware():
     
     except Exception as e:
         import traceback
-        print(f"Error in analyze_hardware: {str(e)}")
-        print(traceback.format_exc())
+        current_app.logger.error(f"Error in analyze_hardware: {str(e)}\n{traceback.format_exc()}")
         return jsonify({'error': f'Error del servidor: {str(e)}'}), 500
 
 def calculate_system_score(cpu, gpu, ram):
@@ -184,7 +183,7 @@ def analyze_game_compatibility(cpu, gpu, ram):
             else:
                 results['cannot_run'].append(game_data)
         except Exception as e:
-            print(f"Error analizando juego {game.id}: {e}")
+            current_app.logger.error(f"Error analizando juego {game.id}: {e}")
             continue
     
     return results

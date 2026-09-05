@@ -1,6 +1,7 @@
 """
 Modelos de base de datos usando SQLAlchemy
 """
+from flask import current_app
 from extensions import db
 from datetime import datetime
 from werkzeug.security import generate_password_hash, check_password_hash
@@ -222,7 +223,7 @@ class Hardware(db.Model):
         try:
             return json.loads(self.especificaciones)
         except (TypeError, ValueError) as e:
-            print(f"Error parsing especificaciones for {self.id}: {e}")
+            current_app.logger.error(f"Error parsing especificaciones for {self.id}: {e}")
             return {}
     
     def get_ram_capacity_gb(self):
