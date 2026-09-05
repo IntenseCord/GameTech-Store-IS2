@@ -53,7 +53,6 @@ async function analyzeHardware() {
                 'X-CSRFToken': getCSRFToken() || ''
             },
             body: JSON.stringify(selectedComponents)
-            })
         });
         
         if (!response.ok) {
