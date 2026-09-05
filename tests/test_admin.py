@@ -11,7 +11,7 @@ Esto bloqueaba directamente el plan de sembrar PSU/Cooling/Gabinete vía
 el panel de admin.
 """
 from extensions import db
-from models.database_models import User, Hardware
+from models.database_models import User, Hardware, Game
 
 
 def crear_admin_logueado(client):
@@ -43,3 +43,76 @@ def test_crear_hardware_todos_los_tipos_del_select(client):
         creado = Hardware.query.filter_by(modelo=modelo).first()
         assert creado is not None, f'El tipo "{tipo}" del <select> fue rechazado por el backend'
         assert creado.tipo == tipo
+
+
+def test_editar_hardware_rechaza_tipo_invalido(client):
+    """Regresión: editar_hardware() no validaba `tipo` contra tipos_validos
+    (a diferencia de nuevo_hardware) — se podía dejar un componente existente
+    con un tipo que el resto de la app (filtros de tienda, compatibilidad)
+    no reconoce."""
+    crear_admin_logueado(client)
+    hw = Hardware(tipo='CPU', marca='Intel', modelo='Core i5', precio=100, especificaciones='{}', stock=1)
+    db.session.add(hw)
+    db.session.commit()
+
+    client.post(f'/admin/hardware/{hw.id}/editar', data={
+        'tipo': 'TIPO_INVENTADO',
+        'marca': 'Intel', 'modelo': 'Core i5', 'precio': '100', 'stock': '1', 'especificaciones': '{}'
+    })
+
+    hardware = Hardware.query.get(hw.id)
+    assert hardware.tipo == 'CPU', 'editar_hardware aceptó un tipo fuera de tipos_validos'
+
+
+def test_editar_hardware_rechaza_precio_negativo(client):
+    """Regresión: editar_hardware() no validaba precio/stock negativos."""
+    crear_admin_logueado(client)
+    hw = Hardware(tipo='CPU', marca='Intel', modelo='Core i5', precio=100, especificaciones='{}', stock=1)
+    db.session.add(hw)
+    db.session.commit()
+
+    client.post(f'/admin/hardware/{hw.id}/editar', data={
+        'tipo': 'CPU', 'marca': 'Intel', 'modelo': 'Core i5',
+        'precio': '-50', 'stock': '1', 'especificaciones': '{}'
+    })
+
+    hardware = Hardware.query.get(hw.id)
+    assert hardware.precio == 100, 'editar_hardware aceptó un precio negativo'
+
+
+def test_editar_juego_rechaza_stock_negativo(client):
+    """Regresión: editar_juego() usaba request.form['stock'] directo (int())
+    sin validar >= 0, a diferencia de nuevo_juego."""
+    crear_admin_logueado(client)
+    game = Game(nombre='Test', descripcion='d', precio=10, genero='Acción',
+                desarrollador='dev', stock=5, fecha_lanzamiento=None)
+    db.session.add(game)
+    db.session.commit()
+
+    client.post(f'/admin/juego/{game.id}/editar', data={
+        'nombre': 'Test', 'descripcion': 'd', 'genero': 'Acción', 'desarrollador': 'dev',
+        'precio': '10', 'stock': '-3', 'fecha_lanzamiento': '2024-01-01',
+        'requisitos_minimos': '', 'requisitos_recomendados': ''
+    })
+
+    actualizado = Game.query.get(game.id)
+    assert actualizado.stock == 5, 'editar_juego aceptó un stock negativo'
+
+
+def test_editar_juego_con_campo_faltante_no_revienta_con_500(client):
+    """Regresión: editar_juego() usaba request.form['campo'] (KeyError si
+    falta), atrapado solo por el except Exception genérico externo, sin
+    decirle al admin qué campo faltó."""
+    crear_admin_logueado(client)
+    game = Game(nombre='Test', descripcion='d', precio=10, genero='Acción',
+                desarrollador='dev', stock=5, fecha_lanzamiento=None)
+    db.session.add(game)
+    db.session.commit()
+
+    response = client.post(f'/admin/juego/{game.id}/editar', data={
+        'nombre': 'Test', 'descripcion': 'd', 'genero': 'Acción',
+        # falta 'desarrollador' a propósito
+        'precio': '10', 'stock': '3', 'fecha_lanzamiento': '2024-01-01',
+    }, follow_redirects=True)
+
+    assert response.status_code == 200
