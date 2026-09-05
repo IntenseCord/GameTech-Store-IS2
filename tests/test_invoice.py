@@ -76,3 +76,20 @@ def test_solicitar_factura_exitosa_aunque_falle_envio_de_email(client, test_user
 
     assert response.status_code == 302
     assert Invoice.query.filter_by(order_id=order.id).first() is not None
+
+
+def test_ver_factura_no_crashea(client, test_user, monkeypatch):
+    """Regresión: templates/invoice/ver_factura.html referenciaba campos de
+    México inexistentes en el modelo (rfc_emisor, rfc_receptor, y sobre todo
+    fecha_timbrado.strftime(...), que sí lanzaba UndefinedError porque se le
+    llama un método sobre un valor indefinido) — el modelo real (Colombia)
+    usa nit_emisor/nit_receptor/fecha_validacion_dian."""
+    login(client)
+    order = crear_orden(test_user)
+    monkeypatch.setattr('controllers.invoice.enviar_factura_por_email', lambda *a, **k: True)
+    client.post(f'/factura/solicitar/{order.id}', data=datos_factura_validos())
+
+    invoice = Invoice.query.filter_by(order_id=order.id).first()
+    response = client.get(f'/factura/{invoice.id}')
+
+    assert response.status_code == 200
