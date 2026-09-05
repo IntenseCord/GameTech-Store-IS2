@@ -21,6 +21,7 @@
                     </div>
 
                     <form method="POST" action="{{ url_for('invoice.solicitar_factura', order_id=order.id) }}">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                         <h5 class="mb-3">Datos Fiscales (Colombia)</h5>
                         
                         <div class="row">
