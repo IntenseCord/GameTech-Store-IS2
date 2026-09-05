@@ -240,7 +240,7 @@ def editar_perfil():
             new_password = request.form.get('new_password')
             
             # Actualizar email
-            mensaje_email = actualizar_email(current_user, email)
+            mensaje_email, requiere_reverificacion = actualizar_email(current_user, email)
             if mensaje_email:
                 flash(*mensaje_email)
 
@@ -250,6 +250,13 @@ def editar_perfil():
                 flash(*mensaje_password)
 
             db.session.commit()
+
+            # El correo se envía después del commit: si send_verification_email
+            # falla, el cambio de email ya quedó guardado igual (mismo criterio
+            # que checkout/recuperar_password con sus correos).
+            if requiere_reverificacion:
+                send_verification_email(current_user.email, current_user.username, current_user.verification_token)
+
             return redirect(url_for('auth.perfil'))
         
         return render_template('auth/editar_perfil.html', user=current_user)
@@ -260,14 +267,22 @@ def editar_perfil():
 
 ''''Funcion auxiliar para actualizar email'''
 def actualizar_email(user, nuevo_email):
+    """Actualiza el email del usuario. Devuelve (mensaje_flash_o_None, requiere_reverificacion).
+
+    Cambiar de email exige reverificarlo: si no, un cambio de email quedaría
+    marcado como email_verified=True sin que el usuario haya demostrado ser
+    dueño de esa bandeja (antes de este fix, ese era exactamente el caso)."""
     if not nuevo_email or nuevo_email == user.email:
-        return None
+        return None, False
 
     if User.query.filter_by(email=nuevo_email).first():
-        return ('El email ya está en uso', 'danger')
+        return ('El email ya está en uso', 'danger'), False
 
     user.email = nuevo_email
-    return ('Email actualizado correctamente', 'success')
+    user.email_verified = False
+    user.verification_token = generate_verification_token()
+    user.token_expiry = get_token_expiry()
+    return ('Email actualizado. Te enviamos un correo para verificar la nueva dirección.', 'warning'), True
 
 '''Funciion auxiliar para actualizar contrasena'''
 def actualizar_password(user, actual, nueva):

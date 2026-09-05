@@ -134,3 +134,55 @@ def test_token_expirado_compara_bien_naive_contra_aware(client, test_user):
     }, follow_redirects=False)
     assert nueva.status_code == 302
     assert '/login' in nueva.headers['Location']
+
+
+def test_cambiar_email_exige_reverificacion(client, test_user, monkeypatch):
+    """Regresión: actualizar_email() cambiaba user.email pero dejaba
+    email_verified=True intacto, sin reenviar verificación -- un usuario podía
+    "verificar" una dirección de correo que nunca demostró controlar. Ahora
+    cambiar de email debe: marcar email_verified=False, generar un nuevo
+    verification_token, y bloquear el login hasta reverificar."""
+    enviados = []
+    monkeypatch.setattr(
+        'controllers.auth.send_verification_email',
+        lambda email, username, token: enviados.append((email, token)) or True
+    )
+
+    client.post('/login', data={'username': 'testuser', 'password': 'Test1234'})
+
+    response = client.post('/perfil/editar', data={
+        'email': 'nuevo@example.com',
+        'current_password': '',
+        'new_password': '',
+    }, follow_redirects=False)
+    assert response.status_code == 302
+
+    db.session.refresh(test_user)
+    assert test_user.email == 'nuevo@example.com'
+    assert test_user.email_verified is False
+    assert test_user.verification_token is not None
+
+    # El correo de verificación se envió a la dirección nueva, con el token guardado
+    assert len(enviados) == 1
+    assert enviados[0] == ('nuevo@example.com', test_user.verification_token)
+
+    # Con el email sin reverificar, un nuevo login debe quedar bloqueado
+    client.get('/logout')
+    login_de_nuevo = client.post('/login', data={'username': 'testuser', 'password': 'Test1234'})
+    assert b'verificar tu correo' in login_de_nuevo.data.lower()
+
+
+def test_no_cambiar_email_no_toca_verificacion(client, test_user):
+    """Guardar el perfil sin cambiar el email no debe tocar email_verified
+    ni generar un token nuevo innecesariamente."""
+    client.post('/login', data={'username': 'testuser', 'password': 'Test1234'})
+
+    client.post('/perfil/editar', data={
+        'email': test_user.email,
+        'current_password': '',
+        'new_password': '',
+    })
+
+    db.session.refresh(test_user)
+    assert test_user.email_verified is True
+    assert test_user.verification_token is None
