@@ -47,6 +47,19 @@ def test_juego_detalle(client, test_game):
     assert response.status_code == 200
 
 
+def test_api_hardware_por_tipo_devuelve_precio_numerico(client, test_hardware):
+    """Regresión: el configurador de PC (pc_builder.html) hacía
+    total.toFixed(2) sobre la suma de precios devueltos por esta API —
+    si 'precio' viene como string (Decimal serializado sin castear a
+    float), la suma concatena en vez de sumar y .toFixed() no existe
+    en un string, crasheando el JS al seleccionar un componente."""
+    response = client.get(f'/api/hardware/por-tipo/{test_hardware.tipo}')
+    assert response.status_code == 200
+    resultados = response.get_json()['resultados']
+    assert len(resultados) >= 1
+    assert isinstance(resultados[0]['precio'], float)
+
+
 def test_consultar_compatibilidad_no_crashea(client, test_game):
     """Regresión: Game.get_games_by_hardware() esperaba que cada valor de
     hardware_specs fuera un dict (specs.get('marca', '')), pero esta ruta le

@@ -137,7 +137,7 @@ def verificar_setup_completo():
         resultado = Compatibility.verificar_compatibility_completa(juegos, componentes)
 
         # Calcular precio total
-        precio_total = sum(componente.precio for componente in componentes) + sum(juego.precio for juego in juegos)
+        precio_total = float(sum(componente.precio for componente in componentes) + sum(juego.precio for juego in juegos))
 
         return jsonify({
             'success': True,
