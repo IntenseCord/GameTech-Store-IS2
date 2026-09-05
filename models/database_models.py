@@ -329,10 +329,17 @@ class Order(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     user_id = db.Column(db.Integer, db.ForeignKey(USERS_ID), nullable=False)
     total = db.Column(db.Numeric(12, 2), nullable=False)
-    status = db.Column(db.String(20), default='pending')  # pending, completed, cancelled
+    status = db.Column(db.String(20), default='pending')  # pending, approved, rejected, cancelled
+    # ID de la preferencia de pago de MercadoPago al crearla; el webhook del
+    # Incremento 2 lo actualiza al ID del pago real una vez confirmado.
+    payment_id = db.Column(db.String(100), nullable=True)
+    # Método de pago usado (ej. 'pse', 'credit_card', 'account_money') — lo
+    # informa el webhook de MercadoPago del Incremento 2, no se conoce al
+    # crear la preferencia.
+    payment_method = db.Column(db.String(50), nullable=True)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
-    
+
     # Relaciones
     items = db.relationship('OrderItem', backref='order', lazy='dynamic', cascade=CASCADE)
     

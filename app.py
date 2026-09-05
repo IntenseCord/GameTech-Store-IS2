@@ -14,7 +14,7 @@ from flask_login import current_user
 from flask_wtf.csrf import CSRFProtect
 
 from config import config, Config
-from extensions import db, mail, login_manager
+from extensions import db, mail, login_manager, migrate
 from database import seed_database
 from models.database_models import Game, Hardware, User, CartItem
 from utils.rate_limiter import init_limiter
@@ -52,6 +52,7 @@ app.logger.info('✅ CSRF Protection habilitado')
 db.init_app(app)
 mail.init_app(app)
 login_manager.init_app(app)
+migrate.init_app(app, db)
 
 # Inicializar seguridad y monitoreo
 limiter = init_limiter(app)

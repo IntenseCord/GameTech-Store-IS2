@@ -66,6 +66,9 @@ class Config:
     # Configuración de sesiones
     PERMANENT_SESSION_LIFETIME = 3600  # 1 hora
 
+    # Pagos (MercadoPago + PSE)
+    MERCADOPAGO_ACCESS_TOKEN = os.environ.get('MERCADOPAGO_ACCESS_TOKEN')
+
     @staticmethod
     def init_app(app):
         """Hook de inicialización por ambiente. No-op por defecto; los ambientes

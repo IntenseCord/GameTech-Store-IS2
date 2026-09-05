@@ -2,14 +2,15 @@
 """
 Controlador del carrito de compras
 """
-from flask import Blueprint, render_template, request, redirect, url_for, flash, jsonify
+from flask import Blueprint, render_template, request, redirect, url_for, flash, jsonify, current_app
 from flask_login import login_required, current_user
 from flask_wtf.csrf import CSRFProtect
 from sqlalchemy.exc import SQLAlchemyError
 from extensions import db
 from models.database_models import CartItem, Game, Hardware, Order, OrderItem
-from utils.email_service import send_order_confirmation_email
+from utils.email_service import send_order_pending_email
 from utils.error_handling import log_db_error
+from utils.mercadopago_service import crear_preferencia_pago, MercadoPagoError
 
 PRODUCTO_ELIMINADO = 'Producto eliminado del carrito'
 STOCK_INSUFICIENTE = 'Stock insuficiente'
@@ -29,7 +30,6 @@ def ver_carrito():
         
         return render_template('cart/carrito.html', cart_items=cart_items, total=total)
     except Exception as e:
-        from flask import current_app
         current_app.logger.error(f'Error en ver_carrito: {str(e)}')
         flash('Error al cargar el carrito', 'danger')
         return redirect(url_for('index'))
@@ -258,20 +258,21 @@ def checkout():
                 
                 # Calcular total
                 total = sum(item.get_subtotal() for item in cart_items)
-                
-                # Crear orden
+
+                # Crear orden en estado pendiente: se confirma (approved/rejected)
+                # cuando llegue el webhook de MercadoPago (Incremento 2), no aquí.
                 order = Order(
                     user_id=current_user.id,
                     total=total,
-                    status='completed'
+                    status='pending'
                 )
                 db.session.add(order)
                 db.session.flush()  # Para obtener el ID de la orden
-                
+
                 # Crear items de la orden y actualizar stock
                 for cart_item in cart_items:
                     product = cart_item.get_product()
-                    
+
                     # Crear item de orden
                     order_item = OrderItem(
                         order_id=order.id,
@@ -282,36 +283,44 @@ def checkout():
                         price=product.precio
                     )
                     db.session.add(order_item)
-                    
+
                     # Actualizar stock (ahora seguro por el bloqueo)
                     product.stock -= cart_item.quantity
-                
+
                 # Vaciar carrito
                 CartItem.query.filter_by(user_id=current_user.id).delete()
-                
+
+                # Generar la preferencia de pago ANTES de comitear: si MercadoPago
+                # falla, se revierte toda la orden (no dejar una orden "pending"
+                # huérfana sin ninguna forma de pagarla).
+                payment_id, checkout_url = crear_preferencia_pago(order, cart_items)
+                order.payment_id = payment_id
+
                 db.session.commit()
             except SQLAlchemyError as e:
                 log_db_error('checkout', e)
                 flash('Error al procesar la transacción', 'danger')
                 return redirect(url_for(VER_CARRITO))
+            except MercadoPagoError as e:
+                db.session.rollback()
+                current_app.logger.error(f'Error creando preferencia de MercadoPago: {e}')
+                flash('No se pudo iniciar el pago. Por favor intenta de nuevo.', 'danger')
+                return redirect(url_for(VER_CARRITO))
 
-            # La orden ya quedó guardada en este punto: un fallo al enviar el correo
-            # de confirmación no debe hacer creer al usuario que la compra falló.
+            # La orden ya quedó guardada en este punto: un fallo al enviar el
+            # correo intermedio no debe impedir que el usuario llegue a pagar.
             try:
-                send_order_confirmation_email(current_user.email, current_user.username, order)
+                send_order_pending_email(current_user.email, current_user.username, order)
             except Exception as e:
-                from flask import current_app
-                current_app.logger.error(f'Error enviando correo de confirmación de orden {order.id}: {e}')
+                current_app.logger.error(f'Error enviando correo de orden pendiente {order.id}: {e}')
 
-            flash(f'¡Compra realizada con éxito! Orden #{order.id}', 'success')
-            return redirect(url_for('cart.orden_confirmada', order_id=order.id))
+            return redirect(checkout_url)
         
         # Calcular total para mostrar
         total = sum(item.get_subtotal() for item in cart_items)
         
         return render_template('cart/checkout.html', cart_items=cart_items, total=total)
     except Exception as e:
-        from flask import current_app
         current_app.logger.error(f'Error en checkout: {str(e)}')
         flash('Error al procesar el checkout', 'danger')
         return redirect(url_for(VER_CARRITO))
@@ -330,7 +339,6 @@ def orden_confirmada(order_id):
         
         return render_template('cart/orden_confirmada.html', order=order)
     except Exception as e:
-        from flask import current_app
         current_app.logger.error(f'Error en orden_confirmada: {str(e)}')
         flash('Error al cargar la orden', 'danger')
         return redirect(url_for('index'))
