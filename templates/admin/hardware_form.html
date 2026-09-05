@@ -52,10 +52,12 @@
                                 <option value="CPU" {% if hardware and hardware.tipo == 'CPU' %}selected{% endif %}>Procesador (CPU)</option>
                                 <option value="GPU" {% if hardware and hardware.tipo == 'GPU' %}selected{% endif %}>Tarjeta Gráfica (GPU)</option>
                                 <option value="RAM" {% if hardware and hardware.tipo == 'RAM' %}selected{% endif %}>Memoria RAM</option>
-                                <option value="STORAGE" {% if hardware and hardware.tipo == 'STORAGE' %}selected{% endif %}>Almacenamiento</option>
-                                <option value="MOTHERBOARD" {% if hardware and hardware.tipo == 'MOTHERBOARD' %}selected{% endif %}>Placa Base</option>
-                                <option value="PSU" {% if hardware and hardware.tipo == 'PSU' %}selected{% endif %}>Fuente de Poder</option>
-                                <option value="CASE" {% if hardware and hardware.tipo == 'CASE' %}selected{% endif %}>Gabinete</option>
+                                <option value="Almacenamiento" {% if hardware and hardware.tipo == 'Almacenamiento' %}selected{% endif %}>Almacenamiento</option>
+                                <option value="Motherboard" {% if hardware and hardware.tipo == 'Motherboard' %}selected{% endif %}>Placa Base</option>
+                                <option value="Fuente de poder" {% if hardware and hardware.tipo == 'Fuente de poder' %}selected{% endif %}>Fuente de Poder</option>
+                                <option value="Refrigeración" {% if hardware and hardware.tipo == 'Refrigeración' %}selected{% endif %}>Refrigeración</option>
+                                <option value="Gabinete" {% if hardware and hardware.tipo == 'Gabinete' %}selected{% endif %}>Gabinete</option>
+                                <option value="Otro" {% if hardware and hardware.tipo == 'Otro' %}selected{% endif %}>Otro</option>
                             </select>
                         </div>
 
