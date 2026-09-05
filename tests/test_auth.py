@@ -1,6 +1,9 @@
 """
 Tests de autenticación
 """
+import uuid
+from datetime import datetime, timedelta, timezone
+
 import pytest
 from flask import url_for
 from extensions import db
@@ -101,3 +104,33 @@ def test_recuperar_password_no_falla_si_smtp_falla(client, test_user, monkeypatc
 
     db.session.refresh(test_user)
     assert test_user.reset_token is not None
+
+
+def test_token_expirado_compara_bien_naive_contra_aware(client, test_user):
+    """Regresión real: reset_token_expiry se guarda en una columna DateTime
+    sin tz. Se escribe con datetime.now(timezone.utc) pero SQLAlchemy la
+    devuelve naive al releerla de la BD (SQLite y Postgres igual, la columna
+    no tiene timezone=True). token_expirado() comparaba esa fecha naive
+    directo contra datetime.now(timezone.utc) (aware) -> TypeError 'can't
+    compare offset-naive and offset-aware datetimes', atrapado por el except
+    Exception genérico de reset_password() y mostrado como 'token inválido'.
+    En la práctica, CUALQUIER link de recuperación de contraseña fallaba
+    siempre, el 100% de las veces, sin importar qué tan rápido se usara. El
+    mismo archivo ya tenía el fix correcto en verify_login() con
+    login_verification_expiry -- solo faltaba aplicarlo aquí."""
+    test_user.reset_token = str(uuid.uuid4())
+    test_user.reset_token_expiry = datetime.now(timezone.utc) + timedelta(hours=1)
+    db.session.commit()
+
+    pagina = client.get(f'/reset-password/{test_user.reset_token}')
+
+    assert pagina.status_code == 200
+    assert b'token inv\xc3\xa1lido' not in pagina.data.lower()
+    assert b'ha expirado' not in pagina.data.lower()
+
+    nueva = client.post(f'/reset-password/{test_user.reset_token}', data={
+        'password': 'NuevaPass123',
+        'confirm_password': 'NuevaPass123',
+    }, follow_redirects=False)
+    assert nueva.status_code == 302
+    assert '/login' in nueva.headers['Location']

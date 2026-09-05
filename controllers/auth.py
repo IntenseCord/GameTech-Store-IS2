@@ -243,12 +243,12 @@ def editar_perfil():
             mensaje_email = actualizar_email(current_user, email)
             if mensaje_email:
                 flash(*mensaje_email)
-            
+
             # Cambiar contraseña
             mensaje_password = actualizar_password(current_user, current_password, new_password)
             if mensaje_password:
                 flash(*mensaje_password)
-            
+
             db.session.commit()
             return redirect(url_for('auth.perfil'))
         
@@ -383,7 +383,10 @@ def obtener_usuario_por_token(token, reintentos=3):
     return None
 
 def token_expirado(expiry_time):
-    return expiry_time < datetime.now(timezone.utc)
+    # reset_token_expiry se guarda en una columna DateTime sin tz (naive):
+    # se escribe con datetime.now(timezone.utc) pero vuelve naive al leerla
+    # de la BD. Mismo caso que verify_login() más abajo con login_verification_expiry.
+    return expiry_time.replace(tzinfo=timezone.utc) < datetime.now(timezone.utc)
 
 '''Procesar el formulario de restablecimiento de contrasenaa'''
 def restablecer_password(user):
