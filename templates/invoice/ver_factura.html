@@ -35,7 +35,7 @@
                     <!-- Encabezado -->
                     <div class="text-center mb-4">
                         <h3 class="text-primary">FACTURA ELECTRÓNICA</h3>
-                        <p class="text-muted mb-0">Comprobante Fiscal Digital por Internet</p>
+                        <p class="text-muted mb-0">Factura Electrónica de Venta - DIAN Colombia</p>
                     </div>
 
                     <!-- Emisor y Receptor -->
@@ -47,7 +47,7 @@
                                 </div>
                                 <div class="card-body">
                                     <p class="mb-1"><strong>{{ invoice.razon_social_emisor }}</strong></p>
-                                    <p class="mb-1"><small>RFC: {{ invoice.rfc_emisor }}</small></p>
+                                    <p class="mb-1"><small>NIT: {{ invoice.nit_emisor }}</small></p>
                                 </div>
                             </div>
                         </div>
@@ -58,7 +58,7 @@
                                 </div>
                                 <div class="card-body">
                                     <p class="mb-1"><strong>{{ invoice.razon_social_receptor }}</strong></p>
-                                    <p class="mb-1"><small>RFC: {{ invoice.rfc_receptor }}</small></p>
+                                    <p class="mb-1"><small>NIT/CC: {{ invoice.nit_receptor }}</small></p>
                                     <p class="mb-1"><small>Dirección: {{ invoice.direccion_fiscal or 'N/A' }}</small></p>
                                     <p class="mb-0"><small>CP: {{ invoice.codigo_postal or 'N/A' }}</small></p>
                                 </div>
@@ -86,24 +86,20 @@
                                 <td>{{ invoice.fecha_emision.strftime('%d/%m/%Y %H:%M:%S') }}</td>
                             </tr>
                             <tr>
-                                <td class="bg-light"><strong>Fecha Timbrado:</strong></td>
-                                <td>{{ invoice.fecha_timbrado.strftime('%d/%m/%Y %H:%M:%S') }}</td>
+                                <td class="bg-light"><strong>Fecha Validación DIAN:</strong></td>
+                                <td>{{ invoice.fecha_validacion_dian.strftime('%d/%m/%Y %H:%M:%S') }}</td>
                             </tr>
                             <tr>
                                 <td class="bg-light"><strong>Método de Pago:</strong></td>
-                                <td>PUE - Pago en una exhibición</td>
+                                <td>{{ invoice.metodo_pago }}</td>
                             </tr>
                             <tr>
                                 <td class="bg-light"><strong>Forma de Pago:</strong></td>
                                 <td>{{ invoice.forma_pago }}</td>
                             </tr>
                             <tr>
-                                <td class="bg-light"><strong>Uso de CFDI:</strong></td>
-                                <td>{{ invoice.uso_cfdi }}</td>
-                            </tr>
-                            <tr>
                                 <td class="bg-light"><strong>Moneda:</strong></td>
-                                <td>MXN - Peso Mexicano</td>
+                                <td>COP - Peso Colombiano</td>
                             </tr>
                         </table>
                     </div>
@@ -146,7 +142,7 @@
                                     <td class="text-end">${{ "%.2f"|format(invoice.subtotal) }}</td>
                                 </tr>
                                 <tr>
-                                    <td class="text-end"><strong>IVA (16%):</strong></td>
+                                    <td class="text-end"><strong>IVA (19%):</strong></td>
                                     <td class="text-end">${{ "%.2f"|format(invoice.iva) }}</td>
                                 </tr>
                                 <tr class="table-primary">
@@ -159,26 +155,26 @@
 
                     <hr>
 
-                    <!-- Sello Digital -->
-                    {% if invoice.sello_digital %}
+                    <!-- CUFE (Código Único de Factura Electrónica, Colombia/DIAN) -->
+                    {% if invoice.cufe %}
                     <div class="mb-3">
-                        <h6>Sello Digital del CFDI:</h6>
-                        <p class="small text-muted font-monospace">{{ invoice.sello_digital[:100] }}...</p>
+                        <h6>CUFE (Código Único de Factura Electrónica):</h6>
+                        <p class="small text-muted font-monospace">{{ invoice.cufe }}</p>
                     </div>
                     {% endif %}
 
-                    <!-- Cadena Original -->
-                    {% if invoice.cadena_original %}
+                    <!-- Código QR de validación DIAN -->
+                    {% if invoice.qr_code %}
                     <div class="mb-3">
-                        <h6>Cadena Original del Complemento de Certificación Digital del SAT:</h6>
-                        <p class="small text-muted font-monospace">{{ invoice.cadena_original }}</p>
+                        <h6>Código QR de validación DIAN:</h6>
+                        <img src="{{ invoice.qr_code }}" alt="Código QR de validación DIAN" style="max-width: 150px;">
                     </div>
                     {% endif %}
 
                     <!-- Nota Legal -->
                     <div class="text-center mt-4 text-muted small">
-                        <p class="mb-1">Este documento es una representación impresa de un CFDI</p>
-                        <p class="mb-0">Para verificar su validez consulte: www.sat.gob.mx</p>
+                        <p class="mb-1">Este documento es una representación de una Factura Electrónica de Venta válida ante la DIAN</p>
+                        <p class="mb-0">Para verificar su validez consulte: www.dian.gov.co</p>
                     </div>
                 </div>
             </div>
