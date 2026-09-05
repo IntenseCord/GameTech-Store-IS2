@@ -546,10 +546,13 @@ def eliminar_juego(game_id):
     """Eliminar juego existente"""
     try:
         game = Game.query.get_or_404(game_id)
-        # Si el juego tiene una imagen, podríamos eliminarla del sistema de archivos aquí
-        if game.imagen and game.imagen.startswith(UPLOAD):
+        # game.imagen se guarda como "/static/uploads/<archivo>" (con slash
+        # inicial, para usarlo directo en <img src>); compararlo contra UPLOAD
+        # ("static/uploads", sin slash) nunca coincidía, así que esta limpieza
+        # nunca se ejecutaba -- las imágenes subidas quedaban huérfanas en disco.
+        if game.imagen and game.imagen.startswith('/' + UPLOAD):
             try:
-                os.remove(os.path.join('static', game.imagen.lstrip('/static/')))
+                os.remove(game.imagen.lstrip('/'))
             except OSError:
                 pass  # Si la imagen no existe, continuamos
         
@@ -569,10 +572,11 @@ def eliminar_hardware(hardware_id):
     """Eliminar componente de hardware existente"""
     try:
         component = Hardware.query.get_or_404(hardware_id)
-        # Si el componente tiene una imagen, podríamos eliminarla del sistema de archivos aquí
-        if component.imagen and component.imagen.startswith(UPLOAD):
+        # Ver comentario equivalente en eliminar_juego(): la comparación original
+        # nunca coincidía por el slash inicial, la limpieza nunca se ejecutaba.
+        if component.imagen and component.imagen.startswith('/' + UPLOAD):
             try:
-                os.remove(os.path.join('static', component.imagen.lstrip('/static/')))
+                os.remove(component.imagen.lstrip('/'))
             except OSError:
                 pass  # Si la imagen no existe, continuamos
         

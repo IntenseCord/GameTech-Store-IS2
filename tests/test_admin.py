@@ -116,3 +116,35 @@ def test_editar_juego_con_campo_faltante_no_revienta_con_500(client):
     }, follow_redirects=True)
 
     assert response.status_code == 200
+
+
+def test_eliminar_juego_borra_la_imagen_subida_del_disco(client):
+    """Regresión: game.imagen.startswith(UPLOAD) comparaba "/static/uploads/x"
+    contra "static/uploads" (sin slash inicial) -- nunca coincidía, así que la
+    limpieza de archivos nunca se ejecutaba y las imágenes subidas quedaban
+    huérfanas en disco para siempre al borrar el juego."""
+    import os
+    import controllers.admin as admin_module
+
+    filename = 'test_eliminar_juego_regresion.jpg'
+    ruta_disco = os.path.join(admin_module.UPLOAD, filename)
+    ruta_guardada = os.path.join('/' + admin_module.UPLOAD, filename)  # lo que guarda nuevo_juego()
+
+    os.makedirs(admin_module.UPLOAD, exist_ok=True)
+    with open(ruta_disco, 'wb') as f:
+        f.write(b'fake image data')
+
+    try:
+        crear_admin_logueado(client)
+        game = Game(nombre='Test', descripcion='d', precio=10, genero='Acción',
+                    desarrollador='dev', stock=5, fecha_lanzamiento=None,
+                    imagen=ruta_guardada)
+        db.session.add(game)
+        db.session.commit()
+
+        client.post(f'/admin/juego/{game.id}/eliminar')
+
+        assert not os.path.exists(ruta_disco), 'La imagen subida no se borró del disco al eliminar el juego'
+    finally:
+        if os.path.exists(ruta_disco):
+            os.remove(ruta_disco)
