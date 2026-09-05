@@ -61,7 +61,7 @@ El equipo de GameTech Store
         return True
         
     except Exception as e:
-        print(f"Error al enviar correo de verificación: {e}")
+        current_app.logger.error(f"Error al enviar correo de verificación: {e}")
         return False
 
 def send_welcome_email(user_email, username):
@@ -105,7 +105,7 @@ El equipo de GameTech Store
         return True
         
     except Exception as e:
-        print(f"Error al enviar correo de bienvenida: {e}")
+        current_app.logger.error(f"Error al enviar correo de bienvenida: {e}")
         return False
 
 def get_token_expiry():
@@ -168,7 +168,7 @@ El equipo de GameTech Store
         return True
 
     except Exception as e:
-        print(f"Error al enviar correo de reverificación de login: {e}")
+        current_app.logger.error(f"Error al enviar correo de reverificación de login: {e}")
         return False
 
 def send_order_confirmation_email(user_email, username, order):
@@ -221,5 +221,5 @@ El equipo de GameTech Store
         return True
 
     except Exception as e:
-        print(f"Error al enviar correo de confirmación de compra: {e}")
+        current_app.logger.error(f"Error al enviar correo de confirmación de compra: {e}")
         return False
