@@ -165,7 +165,7 @@ def analyze_game_compatibility(cpu, gpu, ram):
                 'id': game.id,
                 'nombre': game.nombre,
                 'imagen': game.imagen,
-                'precio': game.precio,
+                'precio': float(game.precio),
                 'expected_fps': 60,
                 'quality': quality,
                 'bottleneck': None,

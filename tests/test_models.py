@@ -106,3 +106,31 @@ def test_hardware_get_especificaciones(app_context):
     especificaciones = hardware.get_especificaciones()
     assert especificaciones['cores'] == 6
     assert especificaciones['threads'] == 12
+
+
+def test_hardware_to_dict_precio_es_numero_no_string(app_context):
+    """Regresión: Flask serializa Decimal como string en JSON. to_dict()
+    debe convertir precio a float explícitamente, o el JSON final trae
+    '"precio": "199.99"' (string) en vez de 199.99 (número) — rompía
+    aritmética en JS del lado del cliente (ej. total.toFixed en el
+    configurador de PC)."""
+    hardware = Hardware(
+        tipo='CPU', marca='Intel', modelo='Core i5-10400',
+        precio=199.99, especificaciones='{}', stock=5
+    )
+    db.session.add(hardware)
+    db.session.commit()
+
+    assert isinstance(hardware.to_dict()['precio'], float)
+
+
+def test_game_to_dict_precio_es_numero_no_string(app_context):
+    game = Game(
+        nombre='Test Game', descripcion='desc', precio=49.99,
+        genero='Acción', desarrollador='Test Dev',
+        requisitos_minimos='{}', requisitos_recomendados='{}', stock=10
+    )
+    db.session.add(game)
+    db.session.commit()
+
+    assert isinstance(game.to_dict()['precio'], float)

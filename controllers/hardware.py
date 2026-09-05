@@ -69,7 +69,7 @@ def api_hardware_por_tipo(tipo):
                     'tipo': c.tipo,
                     'marca': c.marca,
                     'modelo': c.modelo,
-                    'precio': c.precio,
+                    'precio': float(c.precio),
                     'descripcion': c.descripcion,
                     'imagen': c.imagen,
                     'especificaciones': c.get_especificaciones(),
@@ -106,7 +106,7 @@ def api_buscar_hardware():
                     'tipo': componente.tipo,
                     'marca': componente.marca,
                     'modelo': componente.modelo,
-                    'precio': componente.precio,
+                    'precio': float(componente.precio),
                     'descripcion': componente.descripcion,
                     'imagen': componente.imagen,
                     'especificaciones': componente.get_especificaciones(),
@@ -150,7 +150,7 @@ def comparar_hardware():
             'tipo': componente.tipo,
             'marca': componente.marca,
             'modelo': componente.modelo,
-            'precio': componente.precio,
+            'precio': float(componente.precio),
             'imagen': componente.imagen
         }
         comparacion['componentes'].append(comp_data)
