@@ -460,7 +460,11 @@ def actualizar_estado_orden(order_id):
     try:
         order = Order.query.get_or_404(order_id)
         nuevo_estado = request.form.get('status')
-        if nuevo_estado in ['pending', 'completed', 'cancelled']:
+        # 'completed' es un valor heredado de antes del Incremento 1 (pagos):
+        # se deja como valor válido por compatibilidad con órdenes viejas, no
+        # como destino nuevo. approved/rejected son los que pone el webhook
+        # de MercadoPago; el admin puede corregirlos manualmente si hace falta.
+        if nuevo_estado in ['pending', 'approved', 'rejected', 'completed', 'cancelled']:
             order.status = nuevo_estado
             db.session.commit()
             flash('Estado de la orden actualizado', 'success')

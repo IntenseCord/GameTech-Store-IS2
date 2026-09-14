@@ -60,7 +60,9 @@
                                 <div class="input-group">
                                     <select class="form-select" name="status">
                                         <option value="pending" {% if order.status == 'pending' %}selected{% endif %}>Pendiente</option>
-                                        <option value="completed" {% if order.status == 'completed' %}selected{% endif %}>Completada</option>
+                                        <option value="approved" {% if order.status == 'approved' %}selected{% endif %}>Aprobada</option>
+                                        <option value="rejected" {% if order.status == 'rejected' %}selected{% endif %}>Rechazada</option>
+                                        <option value="completed" {% if order.status == 'completed' %}selected{% endif %}>Completada (heredado)</option>
                                         <option value="cancelled" {% if order.status == 'cancelled' %}selected{% endif %}>Cancelada</option>
                                     </select>
                                     <button type="submit" class="btn btn-primary">Actualizar Estado</button>

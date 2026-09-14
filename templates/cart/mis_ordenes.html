@@ -26,12 +26,14 @@
                                 <strong class="text-primary">${{ "%.2f"|format(order.total) }}</strong>
                             </div>
                             <div class="col-md-3 text-end">
-                                {% if order.status == 'completed' %}
-                                    <span class="badge bg-success">Completada</span>
+                                {% if order.status in ('completed', 'approved') %}
+                                    <span class="badge bg-success">Aprobada</span>
                                 {% elif order.status == 'pending' %}
                                     <span class="badge bg-warning">Pendiente</span>
+                                {% elif order.status == 'rejected' %}
+                                    <span class="badge bg-danger">Rechazada</span>
                                 {% else %}
-                                    <span class="badge bg-danger">Cancelada</span>
+                                    <span class="badge bg-secondary">Cancelada</span>
                                 {% endif %}
                             </div>
                         </div>
@@ -63,7 +65,7 @@
                                 <a href="{{ url_for('cart.orden_confirmada', order_id=order.id) }}" class="btn btn-sm btn-outline-primary me-1">
                                     <i class="fas fa-eye me-1"></i>Ver Detalles
                                 </a>
-                                {% if order.status == 'completed' %}
+                                {% if order.status in ('completed', 'approved') %}
                                     <a href="{{ url_for('invoice.solicitar_factura', order_id=order.id) }}" class="btn btn-sm btn-warning">
                                         <i class="fas fa-file-invoice me-1"></i>Solicitar Factura
                                     </a>
