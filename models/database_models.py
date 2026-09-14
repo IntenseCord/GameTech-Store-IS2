@@ -363,7 +363,15 @@ class OrderItem(db.Model):
     def get_subtotal(self):
         """Calcular subtotal"""
         return self.price * self.quantity
-    
+
+    def get_product(self):
+        """Obtener el producto asociado (mismo patrón que CartItem.get_product)"""
+        if self.product_type == 'game':
+            return Game.query.get(self.product_id)
+        elif self.product_type == 'hardware':
+            return Hardware.query.get(self.product_id)
+        return None
+
     def __repr__(self):
         return f'<OrderItem {self.product_name}>'
 

@@ -76,6 +76,7 @@ from controllers.admin import admin_bp
 from controllers.hardware_analyzer import analyzer_bp
 from controllers.invoice import invoice_bp
 from controllers.wishlist import wishlist_bp
+from controllers.webhooks import webhooks_bp
 
 app.register_blueprint(store_bp)
 app.register_blueprint(hardware_bp)
@@ -85,6 +86,12 @@ app.register_blueprint(admin_bp)
 app.register_blueprint(analyzer_bp)
 app.register_blueprint(invoice_bp)
 app.register_blueprint(wishlist_bp)
+app.register_blueprint(webhooks_bp)
+
+# MercadoPago llama a este webhook server-to-server: no hay sesión ni token
+# CSRF que pueda mandar, así que se exime de la protección global (la
+# autenticidad de la notificación se valida por firma, ver controllers/webhooks.py).
+csrf.exempt(webhooks_bp)
 
 # Configurar logging
 if not app.debug:
