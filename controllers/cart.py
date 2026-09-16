@@ -253,7 +253,11 @@ def checkout():
                     product = cart_item.get_product()
                     if not product or product.stock < cart_item.quantity:
                         db.session.rollback()
-                        flash(f'Stock insuficiente para {product.nombre if hasattr(product, "nombre") else product.modelo}', 'danger')
+                        if product:
+                            nombre = product.nombre if hasattr(product, 'nombre') else product.modelo
+                        else:
+                            nombre = 'un producto de tu carrito'
+                        flash(f'Stock insuficiente para {nombre}', 'danger')
                         return redirect(url_for(VER_CARRITO))
                 
                 # Calcular total

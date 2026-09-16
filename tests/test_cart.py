@@ -7,6 +7,13 @@ error de negocio, 400 no 500) y el flujo de checkout con MercadoPago
 (Incremento 1): la orden queda `pending` y solo se confirma vía webhook
 (Incremento 2), y un fallo al crear la preferencia de pago revierte toda
 la transacción (orden, items y stock).
+
+Regresión (revisión de código 2026-09-15): si el producto de un item del
+carrito había sido borrado, la validación de stock hacía `product.modelo`
+sobre un product en None (`hasattr(None, 'nombre')` es False, cae al
+`else` que también es None) -- AttributeError sin manejar en vez del
+mensaje de "stock insuficiente" esperado, justo en el código que ahora
+ejecuta cada checkout.
 """
 import re
 
@@ -91,6 +98,26 @@ def test_pagina_checkout_no_crashea_con_total_decimal(client, test_user, test_ga
     response = client.get('/carrito/checkout')
 
     assert response.status_code == 200
+
+
+def test_checkout_producto_eliminado_muestra_error_no_crashea(client, test_user, test_hardware):
+    """Regresión: si el producto de un item del carrito fue borrado, la
+    validación de stock hacía `product.modelo` sobre un product en None
+    (AttributeError -> 500 genérico) en vez de mostrar el mensaje de
+    'stock insuficiente' esperado."""
+    login(client)
+
+    client.post('/carrito/agregar', json={
+        'product_type': 'hardware', 'product_id': test_hardware.id, 'quantity': 1
+    })
+
+    db.session.delete(Hardware.query.get(test_hardware.id))
+    db.session.commit()
+
+    response = client.post('/carrito/checkout', follow_redirects=True)
+
+    assert response.status_code == 200
+    assert 'Stock insuficiente'.encode() in response.data
 
 
 def test_checkout_exitoso_crea_orden_pending_y_redirige_a_mercadopago(client, test_user, test_game, monkeypatch):
