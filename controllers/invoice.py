@@ -29,6 +29,10 @@ def solicitar_factura(order_id):
     if not _orden_pertenece_usuario(order):
         return _orden_sin_permiso()
 
+    if order.status not in ('completed', 'approved'):
+        flash('Solo se puede facturar una orden con el pago aprobado', 'warning')
+        return redirect(url_for(CART_ORDENES))
+
     invoice_existente = Invoice.query.filter_by(order_id=order.id).first()
     if invoice_existente:
         return _orden_facturada(invoice_existente)
