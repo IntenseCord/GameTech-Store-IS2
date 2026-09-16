@@ -204,6 +204,14 @@ let currentBuild = {
 
 let componentsData = {};
 
+// Escapar HTML antes de insertar texto de catálogo (marca/modelo/descripción)
+// en innerHTML -- ver mismo fix en static/js/hardware_analyzer.js.
+function escapeHtml(text) {
+    const div = document.createElement('div');
+    div.textContent = text ?? '';
+    return div.innerHTML;
+}
+
 // Cargar datos de componentes al iniciar
 document.addEventListener('DOMContentLoaded', function() {
     console.log('pc_builder: DOMContentLoaded - cargando componentes');
@@ -249,11 +257,11 @@ function selectComponent(tipo) {
             <div class="card-body">
                 <div class="row align-items-center">
                     <div class="col-md-2">
-                        <img src="${componente.imagen}" class="img-fluid rounded" alt="${componente.modelo}">
+                        <img src="${escapeHtml(componente.imagen)}" class="img-fluid rounded" alt="${escapeHtml(componente.modelo)}">
                     </div>
                     <div class="col-md-6">
-                        <h6 class="mb-1">${componente.marca} ${componente.modelo}</h6>
-                        <p class="text-muted small mb-0">${componente.descripcion}</p>
+                        <h6 class="mb-1">${escapeHtml(componente.marca)} ${escapeHtml(componente.modelo)}</h6>
+                        <p class="text-muted small mb-0">${escapeHtml(componente.descripcion)}</p>
                     </div>
                     <div class="col-md-2">
                         <strong class="text-primary">$${componente.precio}</strong>
@@ -305,9 +313,9 @@ function updateComponentSlot(tipo, componente) {
     const imagen = componente.imagen || '/static/img/placeholder.png';
     slotContent.innerHTML = `
         <div class="d-flex align-items-center">
-            <img src="${imagen}" class="img-thumbnail me-3" style="width: 50px; height: 50px;" alt="${componente.modelo}">
+            <img src="${escapeHtml(imagen)}" class="img-thumbnail me-3" style="width: 50px; height: 50px;" alt="${escapeHtml(componente.modelo)}">
             <div class="flex-grow-1">
-                <h6 class="mb-1">${componente.marca} ${componente.modelo}</h6>
+                <h6 class="mb-1">${escapeHtml(componente.marca)} ${escapeHtml(componente.modelo)}</h6>
                 <p class="text-primary mb-0">$${componente.precio}</p>
             </div>
             <button class="btn btn-sm btn-outline-danger" onclick="removeComponent('${tipo}')">

@@ -5,8 +5,10 @@ Cubren la conexión de utils/email_sender.py::enviar_factura_por_email()
 al flujo real de solicitar_factura (antes, esa función existía pero nadie
 la llamaba — ver hallazgo de la revisión general del proyecto, 2026-09-04).
 """
+import uuid
+
 from extensions import db
-from models.database_models import Order, OrderItem, Invoice
+from models.database_models import Order, OrderItem, Invoice, User
 
 
 def login(client, username='testuser', password='Test1234'):
@@ -76,6 +78,70 @@ def test_solicitar_factura_exitosa_aunque_falle_envio_de_email(client, test_user
 
     assert response.status_code == 302
     assert Invoice.query.filter_by(order_id=order.id).first() is not None
+
+
+def crear_admin_logueado(client):
+    admin = User(username='admintest', email='admintest@example.com', is_admin=True, email_verified=True)
+    admin.set_password('Test1234')
+    db.session.add(admin)
+    db.session.commit()
+    client.post('/login', data={'username': 'admintest', 'password': 'Test1234'})
+    return admin
+
+
+def crear_factura(user, order):
+    invoice = Invoice(
+        uuid=str(uuid.uuid4()), folio='FE-0001', user_id=user.id, order_id=order.id,
+        nit_receptor='900123456', razon_social_receptor='Cliente de Prueba',
+        subtotal=50.00, iva=9.50, total=59.50, status='active',
+    )
+    db.session.add(invoice)
+    db.session.commit()
+    return invoice
+
+
+def test_cancelar_factura_ya_cancelada_no_devuelve_json_crudo(client, test_user):
+    """Regresión: cancelar_factura() devolvía jsonify(...) en las rutas de
+    error, pero se llama desde un <form method="POST"> normal (no fetch/AJAX)
+    -- el navegador terminaba mostrando el JSON crudo en pantalla en vez de
+    un mensaje. Debe comportarse como el resto de la app: flash + redirect."""
+    admin = crear_admin_logueado(client)
+    order = crear_orden(test_user)
+    invoice = crear_factura(admin, order)
+    invoice.status = 'cancelled'
+    db.session.commit()
+
+    response = client.post(f'/factura/cancelar/{invoice.id}', follow_redirects=False)
+
+    assert response.status_code == 302
+    assert response.content_type != 'application/json'
+
+
+def test_cancelar_factura_sin_ser_admin_no_devuelve_json_crudo(client, test_user):
+    login(client)
+    order = crear_orden(test_user)
+    invoice = crear_factura(test_user, order)
+
+    response = client.post(f'/factura/cancelar/{invoice.id}', follow_redirects=False)
+
+    assert response.status_code == 302
+    assert response.content_type != 'application/json'
+
+    db.session.refresh(invoice)
+    assert invoice.status == 'active'
+
+
+def test_cancelar_factura_exitosa(client, test_user):
+    admin = crear_admin_logueado(client)
+    order = crear_orden(test_user)
+    invoice = crear_factura(admin, order)
+
+    response = client.post(f'/factura/cancelar/{invoice.id}', follow_redirects=False)
+
+    assert response.status_code == 302
+    db.session.refresh(invoice)
+    assert invoice.status == 'cancelled'
+    assert invoice.fecha_cancelacion is not None
 
 
 def test_ver_factura_no_crashea(client, test_user, monkeypatch):

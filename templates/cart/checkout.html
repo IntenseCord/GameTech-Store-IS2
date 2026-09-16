@@ -14,10 +14,11 @@
                 </div>
                 <div class="card-body">
                     <form method="POST" action="{{ url_for('cart.checkout') }}">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                         <div class="row mb-3">
                             <div class="col-md-6">
                                 <label for="user-name" class="form-label">Nombre Completo</label>
-                                <input id="user-name"="text" class="form-control" value="{{ current_user.username }}" readonly>
+                                <input id="user-name" type="text" class="form-control" value="{{ current_user.username }}" readonly>
                             </div>
                             <div class="col-md-6">
                                 <label for="user-email" class="form-label">Email</label>

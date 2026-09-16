@@ -163,7 +163,7 @@
 document.addEventListener('DOMContentLoaded', function() {
     // Botones de acción
     document.getElementById('add-to-cart-btn').addEventListener('click', function() {
-        showToast(`${"{{ componente.marca }}"} ${"{{ componente.modelo }}"} agregado al carrito`, 'success');
+        showToast(`${ {{ componente.marca | tojson }} } ${ {{ componente.modelo | tojson }} } agregado al carrito`, 'success');
     });
 
     document.getElementById('add-to-wishlist-btn').addEventListener('click', function() {

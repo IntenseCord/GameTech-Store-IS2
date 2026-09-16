@@ -206,10 +206,44 @@ def editar_juego(game_id):
         
         if request.method == 'POST':
             try:
+                # Validar campos requeridos (misma validación que nuevo_juego)
+                nombre = request.form.get('nombre', '').strip()
+                descripcion = request.form.get('descripcion', '').strip()
+                genero = request.form.get('genero', '').strip()
+                desarrollador = request.form.get('desarrollador', '').strip()
+
+                if not nombre or not descripcion or not genero or not desarrollador:
+                    flash('Todos los campos son requeridos', 'danger')
+                    return render_template('admin/juego_form.html', game=game)
+
+                try:
+                    precio = float(request.form.get('precio', 0))
+                    if precio < 0:
+                        flash('El precio debe ser positivo', 'danger')
+                        return render_template('admin/juego_form.html', game=game)
+                except (ValueError, TypeError):
+                    flash('Precio inválido', 'danger')
+                    return render_template('admin/juego_form.html', game=game)
+
+                try:
+                    stock = int(request.form.get('stock', 0))
+                    if stock < 0:
+                        flash('El stock debe ser positivo', 'danger')
+                        return render_template('admin/juego_form.html', game=game)
+                except (ValueError, TypeError):
+                    flash('Stock inválido', 'danger')
+                    return render_template('admin/juego_form.html', game=game)
+
+                try:
+                    fecha_lanzamiento = datetime.strptime(request.form.get('fecha_lanzamiento', ''), '%Y-%m-%d')
+                except (ValueError, TypeError):
+                    flash('Fecha de lanzamiento inválida (formato: YYYY-MM-DD)', 'danger')
+                    return render_template('admin/juego_form.html', game=game)
+
                 # Actualizar imagen si se proporciona una nueva - archivo o URL
                 imagen = request.files.get('imagen')
                 imagen_url = request.form.get('imagen_url', '').strip()
-                
+
                 if imagen and imagen.filename:
                     # Validar archivo de manera segura
                     from utils.file_validation import validate_file_upload, generate_unique_filename
@@ -217,7 +251,7 @@ def editar_juego(game_id):
                     if not is_valid:
                         flash(f'Error en imagen: {error_msg}', 'danger')
                         return render_template('admin/juego_form.html', game=game)
-                    
+
                     # Generar nombre único y guardar
                     filename = generate_unique_filename(imagen.filename)
                     imagen.save(os.path.join(UPLOAD, filename))
@@ -232,16 +266,16 @@ def editar_juego(game_id):
                     game.imagen = imagen_url
 
                 # Actualizar datos
-                game.nombre = request.form['nombre']
-                game.descripcion = request.form['descripcion']
-                game.precio = float(request.form['precio'])
-                game.genero = request.form['genero']
-                game.desarrollador = request.form['desarrollador']
-                game.fecha_lanzamiento = datetime.strptime(request.form['fecha_lanzamiento'], '%Y-%m-%d')
-                game.requisitos_minimos = request.form['requisitos_minimos']
-                game.requisitos_recomendados = request.form['requisitos_recomendados']
-                game.stock = int(request.form['stock'])
-                
+                game.nombre = nombre
+                game.descripcion = descripcion
+                game.precio = precio
+                game.genero = genero
+                game.desarrollador = desarrollador
+                game.fecha_lanzamiento = fecha_lanzamiento
+                game.requisitos_minimos = request.form.get('requisitos_minimos', '')
+                game.requisitos_recomendados = request.form.get('requisitos_recomendados', '')
+                game.stock = stock
+
                 db.session.commit()
                 flash('Juego actualizado exitosamente', 'success')
                 return redirect(url_for(ADMIN_JUEGOS))
@@ -376,10 +410,43 @@ def editar_hardware(hardware_id):
         
         if request.method == 'POST':
             try:
+                # Validar campos requeridos (misma validación que nuevo_hardware)
+                tipo = request.form.get('tipo', '').strip()
+                marca = request.form.get('marca', '').strip()
+                modelo = request.form.get('modelo', '').strip()
+                especificaciones = request.form.get('especificaciones', '').strip()
+
+                if not tipo or not marca or not modelo or not especificaciones:
+                    flash('Todos los campos son requeridos', 'danger')
+                    return render_template('admin/hardware_form.html', hardware=component)
+
+                tipos_validos = ['CPU', 'GPU', 'RAM', 'Motherboard', 'Almacenamiento', 'Fuente de poder', 'Refrigeración', 'Gabinete', 'Otro']
+                if tipo not in tipos_validos:
+                    flash('Tipo de hardware inválido', 'danger')
+                    return render_template('admin/hardware_form.html', hardware=component)
+
+                try:
+                    precio = float(request.form.get('precio', 0))
+                    if precio < 0:
+                        flash('El precio debe ser positivo', 'danger')
+                        return render_template('admin/hardware_form.html', hardware=component)
+                except (ValueError, TypeError):
+                    flash('Precio inválido', 'danger')
+                    return render_template('admin/hardware_form.html', hardware=component)
+
+                try:
+                    stock = int(request.form.get('stock', 0))
+                    if stock < 0:
+                        flash('El stock debe ser positivo', 'danger')
+                        return render_template('admin/hardware_form.html', hardware=component)
+                except (ValueError, TypeError):
+                    flash('Stock inválido', 'danger')
+                    return render_template('admin/hardware_form.html', hardware=component)
+
                 # Actualizar imagen si se proporciona una nueva - archivo o URL
                 imagen = request.files.get('imagen')
                 imagen_url = request.form.get('imagen_url', '').strip()
-                
+
                 if imagen and imagen.filename:
                     # Validar archivo de manera segura
                     from utils.file_validation import validate_file_upload, generate_unique_filename
@@ -387,7 +454,7 @@ def editar_hardware(hardware_id):
                     if not is_valid:
                         flash(f'Error en imagen: {error_msg}', 'danger')
                         return render_template('admin/hardware_form.html', hardware=component)
-                    
+
                     # Generar nombre único y guardar
                     filename = generate_unique_filename(imagen.filename)
                     imagen.save(os.path.join(UPLOAD, filename))
@@ -402,14 +469,14 @@ def editar_hardware(hardware_id):
                     component.imagen = imagen_url
 
                 # Actualizar datos
-                component.tipo = request.form['tipo']
-                component.marca = request.form['marca']
-                component.modelo = request.form['modelo']
-                component.precio = float(request.form['precio'])
-                component.descripcion = request.form['descripcion']
-                component.especificaciones = request.form['especificaciones']
-                component.stock = int(request.form['stock'])
-                
+                component.tipo = tipo
+                component.marca = marca
+                component.modelo = modelo
+                component.precio = precio
+                component.descripcion = request.form.get('descripcion', '')
+                component.especificaciones = especificaciones
+                component.stock = stock
+
                 db.session.commit()
                 flash('Componente actualizado exitosamente', 'success')
                 return redirect(url_for(ADMIN_HARDWARE))
@@ -479,10 +546,13 @@ def eliminar_juego(game_id):
     """Eliminar juego existente"""
     try:
         game = Game.query.get_or_404(game_id)
-        # Si el juego tiene una imagen, podríamos eliminarla del sistema de archivos aquí
-        if game.imagen and game.imagen.startswith(UPLOAD):
+        # game.imagen se guarda como "/static/uploads/<archivo>" (con slash
+        # inicial, para usarlo directo en <img src>); compararlo contra UPLOAD
+        # ("static/uploads", sin slash) nunca coincidía, así que esta limpieza
+        # nunca se ejecutaba -- las imágenes subidas quedaban huérfanas en disco.
+        if game.imagen and game.imagen.startswith('/' + UPLOAD):
             try:
-                os.remove(os.path.join('static', game.imagen.lstrip('/static/')))
+                os.remove(game.imagen.lstrip('/'))
             except OSError:
                 pass  # Si la imagen no existe, continuamos
         
@@ -502,10 +572,11 @@ def eliminar_hardware(hardware_id):
     """Eliminar componente de hardware existente"""
     try:
         component = Hardware.query.get_or_404(hardware_id)
-        # Si el componente tiene una imagen, podríamos eliminarla del sistema de archivos aquí
-        if component.imagen and component.imagen.startswith(UPLOAD):
+        # Ver comentario equivalente en eliminar_juego(): la comparación original
+        # nunca coincidía por el slash inicial, la limpieza nunca se ejecutaba.
+        if component.imagen and component.imagen.startswith('/' + UPLOAD):
             try:
-                os.remove(os.path.join('static', component.imagen.lstrip('/static/')))
+                os.remove(component.imagen.lstrip('/'))
             except OSError:
                 pass  # Si la imagen no existe, continuamos
         

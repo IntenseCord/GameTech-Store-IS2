@@ -131,6 +131,16 @@ class TestingConfig(Config):
     # Los tests hacen muchos POST reales a /registro y /login en la misma
     # sesión de pytest; sin esto, Flask-Limiter empieza a responder 429 a
     # partir de cierto número de tests, sin relación con si el código está bien.
+    #
+    # Punto ciego estructural (a diferencia de WTF_CSRF_ENABLED): Flask-Limiter
+    # lee este valor UNA sola vez dentro de init_app() y, si es False, ni
+    # siquiera registra sus hooks de before/after_request -- queda inerte para
+    # siempre en ese proceso. Como conftest.py hace `from app import app` una
+    # sola vez por sesión de pytest, no hay forma de "reactivar" el rate
+    # limiting a mitad de la suite (a diferencia de CSRF, que sí se puede
+    # alternar por request vía app.config). Verificar límites por ruta
+    # (ver utils/rate_limiter.py) requiere una app aparte con esto en True
+    # desde el arranque, o verificación manual/en vivo.
     RATELIMIT_ENABLED = False
 
 

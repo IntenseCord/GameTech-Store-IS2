@@ -6,6 +6,19 @@
 // Estado global
 let currentAnalysis = null;
 
+/**
+ * Escapar HTML antes de insertar texto de catálogo (nombre de juego, etc.)
+ * en innerHTML. game.nombre viene tal cual del admin -- nuevo_juego()/
+ * editar_juego() solo exigen que no esté vacío, sin restringir caracteres --
+ * así que sin esto, un nombre como "<img src=x onerror=alert(1)>" se
+ * ejecutaría para cualquier usuario que viera esta página.
+ */
+function escapeHtml(text) {
+    const div = document.createElement('div');
+    div.textContent = text ?? '';
+    return div.innerHTML;
+}
+
 // Inicializar cuando el DOM esté listo
 document.addEventListener('DOMContentLoaded', function() {
     const analyzeBtn = document.getElementById('analyze-btn');
@@ -142,11 +155,11 @@ function displaySystemScore(score) {
             <div class="row text-start">
                 <div class="col-md-4">
                     <small class="text-muted"><i class="fas fa-microchip me-1"></i>CPU:</small>
-                    <p class="mb-0">${score.components.cpu}</p>
+                    <p class="mb-0">${escapeHtml(score.components.cpu)}</p>
                 </div>
                 <div class="col-md-4">
                     <small class="text-muted"><i class="fas fa-video me-1"></i>GPU:</small>
-                    <p class="mb-0">${score.components.gpu}</p>
+                    <p class="mb-0">${escapeHtml(score.components.gpu)}</p>
                 </div>
                 <div class="col-md-4">
                     <small class="text-muted"><i class="fas fa-memory me-1"></i>RAM:</small>
@@ -276,13 +289,13 @@ function renderGameCategory(containerId, games, quality, badgeColor) {
             <div class="card-body">
                 <div class="row align-items-center">
                     <div class="col-md-2">
-                        <img src="${game.imagen || '/static/images/game-placeholder.jpg'}" 
-                             class="img-fluid rounded" 
-                             alt="${game.nombre}"
+                        <img src="${escapeHtml(game.imagen) || '/static/images/game-placeholder.jpg'}"
+                             class="img-fluid rounded"
+                             alt="${escapeHtml(game.nombre)}"
                              onerror="this.src='/static/images/game-placeholder.jpg'">
                     </div>
                     <div class="col-md-6">
-                        <h5 class="mb-1">${game.nombre}</h5>
+                        <h5 class="mb-1">${escapeHtml(game.nombre)}</h5>
                         ${game.reason ? `<small class="text-danger">${game.reason}</small>` : ''}
                         ${game.bottleneck ? `
                             <div class="mt-2">

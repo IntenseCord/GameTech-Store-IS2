@@ -30,7 +30,10 @@ def add_security_headers(app):
         response.headers['Content-Security-Policy'] = csp
         
         # HSTS (solo en producción con HTTPS)
-        if app.config.get('FLASK_ENV') == 'production':
+        # app.config nunca tiene una clave 'FLASK_ENV': app.config.from_object()
+        # copia los atributos de clase de Config (ENV, no FLASK_ENV) -- esa
+        # comparación era siempre False, HSTS nunca se enviaba ni en produccion.
+        if app.config.get('ENV') == 'production':
             response.headers['Strict-Transport-Security'] = 'max-age=31536000; includeSubDomains'
         
         # Referrer Policy
