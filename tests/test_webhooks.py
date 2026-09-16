@@ -6,6 +6,21 @@ estado real se sincroniza consultando la API (nunca se confía en el cuerpo
 de la notificación), idempotencia ante reintentos, restauración de stock
 cuando un pago termina rechazado, y que un fallo de envío de correo no
 rompe la respuesta del webhook.
+
+Regresión (revisión de código 2026-09-15):
+- `test_webhook_no_revierte_orden_ya_aprobada` -- la idempotencia solo
+  comparaba contra `order.status`, así que una notificación tardía o de un
+  pago distinto para la misma orden podía revertir una orden ya 'approved'
+  de vuelta a 'rejected' y restaurar stock que en realidad seguía vendido.
+  Fix: 'approved' es ahora un estado terminal (controllers/webhooks.py).
+- `test_webhook_reintento_exitoso_tras_rechazo_vuelve_a_descontar_stock` --
+  faltante, no bug: una orden rechazada que se aprueba en un reintento
+  posterior no volvía a descontar el stock que se había restaurado.
+- `test_webhook_usa_payment_id_de_query_string_no_del_body` -- la firma
+  x-signature solo cubre el data.id de la query string, pero el
+  payment_id procesado priorizaba el del body -- un body modificado podía
+  hacer que se procesara un pago distinto del que realmente autenticó la
+  firma. Fix: se prioriza el data.id de la query (el firmado).
 """
 import hashlib
 import hmac
@@ -154,3 +169,88 @@ def test_webhook_tipo_no_payment_se_ignora(client, app_context):
     headers = firmar('222')
     response = enviar_webhook(client, '222', headers=headers, tipo='merchant_order')
     assert response.status_code == 200
+
+
+def test_webhook_no_revierte_orden_ya_aprobada(client, app_context, test_user, test_hardware, monkeypatch):
+    """Una notificación tardía de un pago distinto (misma orden) no debe
+    poder revertir una orden que ya está 'approved' ni devolverle stock que
+    en realidad sigue vendido."""
+    app_context.config['MERCADOPAGO_WEBHOOK_SECRET'] = WEBHOOK_SECRET
+    stock_tras_venta = test_hardware.stock
+    order = crear_orden_con_hardware(test_user, test_hardware, status='approved')
+
+    monkeypatch.setattr(
+        'controllers.webhooks.obtener_pago',
+        lambda payment_id: {'status': 'rejected', 'external_reference': str(order.id), 'payment_method_id': None}
+    )
+    enviados = []
+    monkeypatch.setattr(
+        'controllers.webhooks.send_order_rejected_email',
+        lambda email, username, o: enviados.append(1) or True
+    )
+
+    headers = firmar('777')
+    response = enviar_webhook(client, '777', headers=headers)
+
+    assert response.status_code == 200
+    db.session.refresh(order)
+    assert order.status == 'approved', 'una orden ya aprobada no debe revertirse'
+
+    hardware = Hardware.query.get(test_hardware.id)
+    assert hardware.stock == stock_tras_venta, 'no debe restaurarse stock de una orden ya aprobada'
+    assert len(enviados) == 0, 'no debe enviarse correo de rechazo para una orden ya aprobada'
+
+
+def test_webhook_reintento_exitoso_tras_rechazo_vuelve_a_descontar_stock(client, app_context, test_user, test_hardware, monkeypatch):
+    """Si una orden rechazada (con su stock ya restaurado) se aprueba en un
+    reintento de pago posterior, el stock debe volver a descontarse."""
+    app_context.config['MERCADOPAGO_WEBHOOK_SECRET'] = WEBHOOK_SECRET
+    stock_restaurado = test_hardware.stock
+    order = crear_orden_con_hardware(test_user, test_hardware, status='rejected')
+
+    monkeypatch.setattr(
+        'controllers.webhooks.obtener_pago',
+        lambda payment_id: {'status': 'approved', 'external_reference': str(order.id), 'payment_method_id': 'visa'}
+    )
+    monkeypatch.setattr(
+        'controllers.webhooks.send_order_confirmation_email',
+        lambda email, username, o: True
+    )
+
+    headers = firmar('888')
+    response = enviar_webhook(client, '888', headers=headers)
+
+    assert response.status_code == 200
+    db.session.refresh(order)
+    assert order.status == 'approved'
+
+    hardware = Hardware.query.get(test_hardware.id)
+    assert hardware.stock == stock_restaurado - 2, 'debe volver a descontarse el stock de la orden que ahora se aprobó'
+
+
+def test_webhook_usa_payment_id_de_query_string_no_del_body(client, app_context, test_user, test_hardware, monkeypatch):
+    """El payment_id procesado debe ser el que realmente está cubierto por
+    la firma (el de la query string), no el que venga en el body -- si no,
+    la firma no protege lo que el webhook termina ejecutando."""
+    app_context.config['MERCADOPAGO_WEBHOOK_SECRET'] = WEBHOOK_SECRET
+    order = crear_orden_con_hardware(test_user, test_hardware, status='pending')
+
+    payment_ids_consultados = []
+    monkeypatch.setattr(
+        'controllers.webhooks.obtener_pago',
+        lambda payment_id: payment_ids_consultados.append(payment_id) or {
+            'status': 'approved', 'external_reference': str(order.id), 'payment_method_id': 'visa'
+        }
+    )
+    monkeypatch.setattr('controllers.webhooks.send_order_confirmation_email', lambda *a: True)
+
+    # Firma calculada sobre data.id=123 (query string), pero el body dice 999.
+    headers = firmar('123')
+    response = client.post(
+        '/webhooks/mercadopago?type=payment&data.id=123',
+        json={'type': 'payment', 'data': {'id': '999'}},
+        headers=headers,
+    )
+
+    assert response.status_code == 200
+    assert payment_ids_consultados == ['123'], 'debe procesarse el payment_id firmado (query), no el del body'

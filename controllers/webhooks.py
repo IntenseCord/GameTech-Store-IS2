@@ -13,6 +13,7 @@ from models.database_models import Order
 from utils.email_service import send_order_confirmation_email, send_order_rejected_email
 from utils.error_handling import log_db_error
 from utils.mercadopago_service import MercadoPagoError, obtener_pago
+from utils.order_stock import descontar_stock, restaurar_stock
 
 # Mapea los estados reales de un pago de MercadoPago al estado de Order.
 # cancelled/refunded/charged_back se tratan como 'rejected': en los tres
@@ -42,7 +43,10 @@ def mercadopago_webhook():
 
     body = request.get_json(silent=True) or {}
     tipo = body.get('type') or request.args.get('type')
-    payment_id = (body.get('data') or {}).get('id') or request.args.get('data.id') or request.args.get('id')
+    # El data.id de la query string es el que efectivamente está firmado
+    # (ver _firma_valida) -- se prioriza sobre el del body para no procesar
+    # un payment_id distinto del que la firma realmente autenticó.
+    payment_id = request.args.get('data.id') or request.args.get('id') or (body.get('data') or {}).get('id')
 
     # MercadoPago manda notificaciones de otros tipos (ej. merchant_order);
     # solo nos interesan las de pago. Responder 200 igual para que no reintente.
@@ -69,9 +73,24 @@ def mercadopago_webhook():
     if order.status == nuevo_estado:
         return jsonify({'success': True}), 200
 
+    # 'approved' es un estado terminal: una notificación tardía o de un
+    # intento de pago distinto (external_reference compartido) no debe
+    # poder revertir una orden que ya se cobró -- si no, se le devolvería
+    # al inventario stock que en realidad sigue vendido.
+    if order.status == 'approved':
+        current_app.logger.info(
+            f'Webhook de MercadoPago: orden {order.id} ya está approved, '
+            f'se ignora notificación de {payment_id} (estado {nuevo_estado})'
+        )
+        return jsonify({'success': True}), 200
+
     try:
-        if nuevo_estado == 'rejected' and order.status != 'rejected':
-            _restaurar_stock(order)
+        if nuevo_estado == 'rejected':
+            restaurar_stock(order)
+        elif nuevo_estado == 'approved' and order.status == 'rejected':
+            # Reintento de pago exitoso tras un rechazo previo: el stock se
+            # había restaurado, hay que volver a descontarlo.
+            descontar_stock(order)
 
         order.status = nuevo_estado
         order.payment_id = str(payment_id)
@@ -84,17 +103,6 @@ def mercadopago_webhook():
     _enviar_correo_estado(order, nuevo_estado)
 
     return jsonify({'success': True}), 200
-
-
-def _restaurar_stock(order):
-    """Devuelve al inventario el stock descontado en checkout() cuando el
-    pago termina rechazado -- el stock se descuenta al crear la orden
-    'pending' (antes de saber si el pago se confirma), así que si no se
-    confirma hay que revertirlo."""
-    for item in order.items:
-        product = item.get_product()
-        if product:
-            product.stock += item.quantity
 
 
 def _enviar_correo_estado(order, nuevo_estado):
