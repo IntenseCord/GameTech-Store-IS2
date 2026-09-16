@@ -156,6 +156,14 @@ if __name__ == '__main__':
     # Inicializar la base de datos
     with app.app_context():
         db.create_all()
+        # db.create_all() ya deja las tablas con todas las columnas del
+        # modelo actual (incluidas las que agregan migraciones nuevas como
+        # payment_id/payment_method), pero no registra ningún historial de
+        # Alembic. Sin este stamp, un `flask db upgrade` posterior intenta
+        # aplicar esas migraciones sobre columnas que ya existen y falla con
+        # "columna duplicada". stamp() es un no-op si ya hay historial.
+        from flask_migrate import stamp
+        stamp()
         # Poblar con datos iniciales si está vacía
         if Game.query.count() == 0:
             seed_database()
