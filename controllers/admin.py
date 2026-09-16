@@ -9,6 +9,7 @@ from extensions import db
 from models.database_models import User, Game, Hardware, Order, OrderItem
 from werkzeug.utils import secure_filename
 from utils.error_handling import log_db_error
+from utils.order_stock import descontar_stock, restaurar_stock
 import os
 from datetime import datetime
 
@@ -465,6 +466,15 @@ def actualizar_estado_orden(order_id):
         # como destino nuevo. approved/rejected son los que pone el webhook
         # de MercadoPago; el admin puede corregirlos manualmente si hace falta.
         if nuevo_estado in ['pending', 'approved', 'rejected', 'completed', 'cancelled']:
+            estado_anterior = order.status
+            # Mismo criterio de ajuste de stock que usa el webhook de
+            # MercadoPago (utils/order_stock.py), para que una corrección
+            # manual del admin no desincronice el inventario.
+            if nuevo_estado == 'rejected' and estado_anterior != 'rejected':
+                restaurar_stock(order)
+            elif nuevo_estado in ('approved', 'completed') and estado_anterior == 'rejected':
+                descontar_stock(order)
+
             order.status = nuevo_estado
             db.session.commit()
             flash('Estado de la orden actualizado', 'success')
