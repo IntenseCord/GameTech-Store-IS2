@@ -134,3 +134,24 @@ def test_game_to_dict_precio_es_numero_no_string(app_context):
     db.session.commit()
 
     assert isinstance(game.to_dict()['precio'], float)
+
+
+def test_get_ram_capacity_gb_no_crashea_si_capacidad_no_es_string(app_context):
+    """Regresión: 'especificaciones' es JSON de texto libre sin esquema
+    validado (admin.py solo exige que no esté vacío) -- si alguien escribe
+    {"capacidad": 16} sin comillas, capacidad llega como int y
+    re.search(patron, capacity_str) revenía con TypeError ('expected string
+    or bytes-like object'). El sibling _extract_ram_gb() de
+    utils/bottleneck_detector.py ya envolvía con str(), pero este método
+    (el que realmente se usa en la práctica) no lo tenía."""
+    ram = Hardware(
+        tipo='RAM', marca='Kingston', modelo='Fury',
+        precio=59.99, especificaciones='{"capacidad": 16}', stock=5
+    )
+    db.session.add(ram)
+    db.session.commit()
+
+    # Sin el patrón "N GB" no hay forma de extraer un número confiable
+    # (16 podría ser GB, MB, cualquier otra unidad) -- lo importante es que
+    # no crashee y caiga al default sano, no que adivine el valor.
+    assert ram.get_ram_capacity_gb() == 8

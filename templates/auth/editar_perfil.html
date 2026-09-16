@@ -23,6 +23,7 @@
                     {% endwith %}
 
                     <form method="POST" action="{{ url_for('auth.editar_perfil') }}">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                         <h5 class="mb-3">Información de la Cuenta</h5>
                         
                         <div class="mb-3">

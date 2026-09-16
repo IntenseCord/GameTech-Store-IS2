@@ -48,7 +48,8 @@ def client_csrf(app_context):
     El resto de la suite corre con WTF_CSRF_ENABLED=False (ver app_context):
     eso es necesario para no tener que fabricar tokens en cada POST, pero como
     efecto secundario ningún test detecta un formulario al que le falte el
-    campo csrf_token — ya pasó una vez (checkout.html) y solo se vio probando
+    campo csrf_token — ya pasó (checkout.html y otros 12 formularios más,
+    todos dependían solo del parche JS de base.html) y solo se ve probando
     con esto activado. Usar este fixture para cubrir esos casos puntuales.
     """
     app_context.config['WTF_CSRF_ENABLED'] = True

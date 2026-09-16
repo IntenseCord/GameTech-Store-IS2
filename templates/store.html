@@ -199,6 +199,13 @@
 
 {% block extra_js %}
 <script>
+// Escapar HTML antes de insertar texto de catálogo en innerHTML.
+function escapeHtml(text) {
+    const div = document.createElement('div');
+    div.textContent = text ?? '';
+    return div.innerHTML;
+}
+
 document.addEventListener('DOMContentLoaded', function() {
     // Verificador de compatibilidad
     document.getElementById('check-compatibility-btn').addEventListener('click', function() {
@@ -267,12 +274,12 @@ document.addEventListener('DOMContentLoaded', function() {
             html += `
                 <div class="col-md-4 col-sm-6">
                     <div class="card h-100">
-                        <img src="${juego.imagen}" class="card-img-top" alt="${juego.nombre}">
+                        <img src="${escapeHtml(juego.imagen)}" class="card-img-top" alt="${escapeHtml(juego.nombre)}">
                         <div class="card-body">
-                            <h6 class="card-title">${juego.nombre}</h6>
-                            <p class="card-text text-muted small">${juego.descripcion.substring(0, 100)}...</p>
+                            <h6 class="card-title">${escapeHtml(juego.nombre)}</h6>
+                            <p class="card-text text-muted small">${escapeHtml(juego.descripcion.substring(0, 100))}...</p>
                             <div class="d-flex justify-content-between align-items-center">
-                                <span class="badge bg-secondary">${juego.genero}</span>
+                                <span class="badge bg-secondary">${escapeHtml(juego.genero)}</span>
                                 <span class="text-primary fw-bold">
                                     ${juego.precio === 0 ? 'Gratis' : '$' + juego.precio.toFixed(2)}
                                 </span>

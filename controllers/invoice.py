@@ -210,13 +210,15 @@ def mis_facturas():
 def cancelar_factura(invoice_id):
     """Cancelar una factura (solo admin)"""
     if not current_user.is_admin:
-        return jsonify({'error': 'No autorizado'}), 403
-    
+        flash('No autorizado', 'danger')
+        return redirect(url_for(CART_ORDENES))
+
     invoice = Invoice.query.get_or_404(invoice_id)
-    
+
     if invoice.status == 'cancelled':
-        return jsonify({'error': 'La factura ya está cancelada'}), 400
-    
+        flash('La factura ya está cancelada', 'warning')
+        return redirect(url_for(VER_FACTURA, invoice_id=invoice_id))
+
     invoice.status = 'cancelled'
     invoice.fecha_cancelacion = datetime.now()
     db.session.commit()

@@ -5,16 +5,6 @@ from datetime import datetime
 from extensions import db
 
 
-def init_db(app):
-    """Inicializar la base de datos"""
-    db.init_app(app)
-    with app.app_context():
-        db.create_all()
-        # Poblar con datos iniciales si está vacía
-        from models.database_models import Game, Hardware, User
-        if Game.query.count() == 0:
-            seed_database()
-
 def seed_database():
     """Poblar la base de datos con datos iniciales"""
     from models.database_models import Game, Hardware, User

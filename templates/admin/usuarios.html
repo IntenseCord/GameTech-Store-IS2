@@ -88,6 +88,7 @@
                                         </td>
                                         <td class="text-center">
                                             <form method="POST" action="{{ url_for('admin.toggle_admin', user_id=user.id) }}" class="d-inline">
+                                                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                                                 {% if user == current_user %}
                                                     <button type="button" class="btn btn-sm btn-outline-secondary" disabled title="No puedes cambiar tu propio rol">
                                                         {{ 'Quitar Admin' if user.is_admin else 'Hacer Admin' }}

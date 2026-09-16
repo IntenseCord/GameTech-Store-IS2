@@ -233,10 +233,13 @@ class Hardware(db.Model):
         
         specs = self.get_especificaciones()
         capacity_str = specs.get('capacidad', '8 GB')
-        
-        # Extraer número: "16 GB" -> 16
+
+        # Extraer número: "16 GB" -> 16. str() porque 'especificaciones' es
+        # JSON de texto libre sin validar esquema (admin.py solo exige que no
+        # esté vacío) -- si alguien escribe {"capacidad": 16} sin comillas,
+        # capacity_str llega como int y re.search revienta con TypeError.
         import re
-        match = re.search(r'(\d+)\s*GB', capacity_str, re.IGNORECASE)
+        match = re.search(r'(\d+)\s*GB', str(capacity_str), re.IGNORECASE)
         if match:
             return int(match.group(1))
         return 8  # Default

@@ -1,6 +1,9 @@
 """
 Tests de autenticación
 """
+import uuid
+from datetime import datetime, timedelta, timezone
+
 import pytest
 from flask import url_for
 from extensions import db
@@ -101,3 +104,96 @@ def test_recuperar_password_no_falla_si_smtp_falla(client, test_user, monkeypatc
 
     db.session.refresh(test_user)
     assert test_user.reset_token is not None
+
+
+def test_token_expirado_compara_bien_naive_contra_aware(client, test_user):
+    """Regresión real: reset_token_expiry se guarda en una columna DateTime
+    sin tz. Se escribe con datetime.now(timezone.utc) pero SQLAlchemy la
+    devuelve naive al releerla de la BD (SQLite y Postgres igual, la columna
+    no tiene timezone=True). token_expirado() comparaba esa fecha naive
+    directo contra datetime.now(timezone.utc) (aware) -> TypeError 'can't
+    compare offset-naive and offset-aware datetimes', atrapado por el except
+    Exception genérico de reset_password() y mostrado como 'token inválido'.
+    En la práctica, CUALQUIER link de recuperación de contraseña fallaba
+    siempre, el 100% de las veces, sin importar qué tan rápido se usara. El
+    mismo archivo ya tenía el fix correcto en verify_login() con
+    login_verification_expiry -- solo faltaba aplicarlo aquí."""
+    test_user.reset_token = str(uuid.uuid4())
+    test_user.reset_token_expiry = datetime.now(timezone.utc) + timedelta(hours=1)
+    db.session.commit()
+
+    pagina = client.get(f'/reset-password/{test_user.reset_token}')
+
+    assert pagina.status_code == 200
+    assert b'token inv\xc3\xa1lido' not in pagina.data.lower()
+    assert b'ha expirado' not in pagina.data.lower()
+
+    nueva = client.post(f'/reset-password/{test_user.reset_token}', data={
+        'password': 'NuevaPass123',
+        'confirm_password': 'NuevaPass123',
+    }, follow_redirects=False)
+    assert nueva.status_code == 302
+    assert '/login' in nueva.headers['Location']
+
+
+def test_cambiar_email_exige_reverificacion(client, test_user, monkeypatch):
+    """Regresión: actualizar_email() cambiaba user.email pero dejaba
+    email_verified=True intacto, sin reenviar verificación -- un usuario podía
+    "verificar" una dirección de correo que nunca demostró controlar. Ahora
+    cambiar de email debe: marcar email_verified=False, generar un nuevo
+    verification_token, y bloquear el login hasta reverificar."""
+    enviados = []
+    monkeypatch.setattr(
+        'controllers.auth.send_verification_email',
+        lambda email, username, token: enviados.append((email, token)) or True
+    )
+
+    client.post('/login', data={'username': 'testuser', 'password': 'Test1234'})
+
+    response = client.post('/perfil/editar', data={
+        'email': 'nuevo@example.com',
+        'current_password': '',
+        'new_password': '',
+    }, follow_redirects=False)
+    assert response.status_code == 302
+
+    db.session.refresh(test_user)
+    assert test_user.email == 'nuevo@example.com'
+    assert test_user.email_verified is False
+    assert test_user.verification_token is not None
+
+    # El correo de verificación se envió a la dirección nueva, con el token guardado
+    assert len(enviados) == 1
+    assert enviados[0] == ('nuevo@example.com', test_user.verification_token)
+
+    # Con el email sin reverificar, un nuevo login debe quedar bloqueado
+    client.get('/logout')
+    login_de_nuevo = client.post('/login', data={'username': 'testuser', 'password': 'Test1234'})
+    assert b'verificar tu correo' in login_de_nuevo.data.lower()
+
+
+def test_no_cambiar_email_no_toca_verificacion(client, test_user):
+    """Guardar el perfil sin cambiar el email no debe tocar email_verified
+    ni generar un token nuevo innecesariamente."""
+    client.post('/login', data={'username': 'testuser', 'password': 'Test1234'})
+
+    client.post('/perfil/editar', data={
+        'email': test_user.email,
+        'current_password': '',
+        'new_password': '',
+    })
+
+    db.session.refresh(test_user)
+    assert test_user.email_verified is True
+    assert test_user.verification_token is None
+
+# NOTA: /recuperar-password y /resend-verification ahora tienen
+# @limiter.limit(rate_limit_email_sensible) (ver utils/rate_limiter.py) para
+# no poder bombardear el buzón de otra persona con correos repetidos -- antes
+# solo aplicaba el límite global (50/hora). No hay un test automatizado de
+# esto: RATELIMIT_ENABLED=False en TestingConfig hace que Flask-Limiter nunca
+# registre sus hooks para la app de pytest (ver el comentario en config.py),
+# así que no puede reactivarse a mitad de la suite como sí se hace con CSRF.
+# Verificado manualmente: con una app separada arrancada con
+# RATELIMIT_ENABLED=True desde el inicio, las primeras 3 peticiones a
+# /recuperar-password devuelven 302 y la 4a y 5a devuelven 429.
