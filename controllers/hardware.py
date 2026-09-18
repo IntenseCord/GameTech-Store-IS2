@@ -1,5 +1,5 @@
 from flask import Blueprint, render_template, request, jsonify, current_app
-from models.database_models import Hardware, Game
+from models.database_models import Hardware
 
 hardware_bp = Blueprint('hardware', __name__)
 

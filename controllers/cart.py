@@ -4,7 +4,6 @@ Controlador del carrito de compras
 """
 from flask import Blueprint, render_template, request, redirect, url_for, flash, jsonify, current_app
 from flask_login import login_required, current_user
-from flask_wtf.csrf import CSRFProtect
 from sqlalchemy.exc import SQLAlchemyError
 from extensions import db
 from models.database_models import CartItem, Game, Hardware, Order, OrderItem

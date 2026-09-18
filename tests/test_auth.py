@@ -4,8 +4,6 @@ Tests de autenticación
 import uuid
 from datetime import datetime, timedelta, timezone
 
-import pytest
-from flask import url_for
 from extensions import db
 from models.database_models import User
 

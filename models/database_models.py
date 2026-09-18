@@ -5,7 +5,7 @@ from flask import current_app
 from extensions import db
 from datetime import datetime
 from werkzeug.security import generate_password_hash, check_password_hash
-from sqlalchemy import or_, and_
+from sqlalchemy import or_
 import json
 
 CASCADE = 'all, delete-orphan'

@@ -2,12 +2,11 @@
 Controlador de facturas electrónicas colombianas
 Maneja la solicitud, generación y envío de facturas por correo
 """
-from flask import Blueprint, render_template, request, redirect, url_for, flash, send_file, jsonify, current_app
+from flask import Blueprint, render_template, request, redirect, url_for, flash, send_file, current_app
 from flask_login import login_required, current_user
-from flask_mail import Message
 from sqlalchemy.exc import SQLAlchemyError
 from extensions import db
-from models.database_models import Invoice, Order, User
+from models.database_models import Invoice, Order
 from utils.invoice_generator_colombia import InvoiceGeneratorColombia as InvoiceGenerator
 from utils.email_sender import enviar_factura_por_email
 from utils.error_handling import log_db_error

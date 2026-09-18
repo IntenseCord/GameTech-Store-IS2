@@ -1,7 +1,6 @@
 """
 Tests de modelos de base de datos
 """
-import pytest
 from extensions import db
 from models.database_models import User, Game, Hardware
 

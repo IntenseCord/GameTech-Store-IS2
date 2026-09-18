@@ -6,8 +6,7 @@ from flask_login import login_required, current_user
 from functools import wraps
 from sqlalchemy.exc import SQLAlchemyError
 from extensions import db
-from models.database_models import User, Game, Hardware, Order, OrderItem
-from werkzeug.utils import secure_filename
+from models.database_models import User, Game, Hardware, Order
 from utils.error_handling import log_db_error
 from utils.order_stock import descontar_stock, restaurar_stock
 import os

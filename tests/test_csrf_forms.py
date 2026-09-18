@@ -18,7 +18,7 @@ import uuid
 from datetime import datetime, timedelta, timezone
 
 from extensions import db
-from models.database_models import User, Game, Hardware, Order, OrderItem, Invoice, CartItem
+from models.database_models import User, Order, Invoice, CartItem
 
 CSRF_INPUT = b'name="csrf_token"'
 
