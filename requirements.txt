@@ -49,3 +49,7 @@ sentry-sdk==2.57.0
 # Generación de PDFs y QR
 reportlab==4.2.0
 qrcode[pil]==8.0
+
+# API GraphQL (catálogo de solo lectura)
+strawberry-graphql==0.327.7
+graphql-core==3.2.12

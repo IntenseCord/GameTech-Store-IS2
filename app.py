@@ -75,6 +75,7 @@ from controllers.admin import admin_bp
 from controllers.hardware_analyzer import analyzer_bp
 from controllers.invoice import invoice_bp
 from controllers.wishlist import wishlist_bp
+from controllers.graphql_api import init_graphql
 
 app.register_blueprint(store_bp)
 app.register_blueprint(hardware_bp)
@@ -84,6 +85,10 @@ app.register_blueprint(admin_bp)
 app.register_blueprint(analyzer_bp)
 app.register_blueprint(invoice_bp)
 app.register_blueprint(wishlist_bp)
+
+# API GraphQL del catálogo (solo lectura, sin sesión): se exime de CSRF porque
+# no hay mutaciones que un tercero pueda forzar. Ver controllers/graphql_api.py.
+init_graphql(app, csrf)
 
 # Configurar logging
 if not app.debug:
