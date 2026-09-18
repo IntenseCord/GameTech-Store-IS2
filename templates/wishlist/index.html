@@ -142,27 +142,12 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     };
 
-    // showToast no es global (main.js la define dentro de otra función, y
-    // no todas las páginas la definen) — copia local hasta que se unifique.
-    function showToast(message, type) {
-        const toast = document.createElement('div');
-        toast.className = `toast align-items-center text-white bg-${type} border-0 position-fixed top-0 start-50 translate-middle-x mt-3`;
-        toast.style.zIndex = '9999';
-        toast.innerHTML = `
-            <div class="d-flex">
-                <div class="toast-body">${message}</div>
-                <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast"></button>
-            </div>
-        `;
-        document.body.appendChild(toast);
-        const bsToast = new bootstrap.Toast(toast);
-        bsToast.show();
-        setTimeout(() => {
-            if (document.body.contains(toast)) {
-                toast.remove();
-            }
-        }, 3000);
-    }
+    // showToast() ahora es global, definida una sola vez en static/js/main.js.
+    // (La copia que estaba acá agregaba position-fixed/start-50/translate-middle-x
+    // para centrarla arriba, pero esas clases no producían el efecto esperado
+    // en el navegador -- verificado en vivo: el toast terminaba pegado a la
+    // derecha, no centrado. La versión global usa la regla CSS de .toast en
+    // static/css/style.css, que sí funciona.)
 });
 </script>
 {% endblock %}
