@@ -198,7 +198,7 @@ GAME_REQUIREMENTS_DATA = [
         }
     },
     {
-        'game_name': 'GTA V',
+        'game_name': 'Grand Theft Auto V',
         'requirements': {
             'min_cpu_score': 6500,
             'min_gpu_score': 5500,
