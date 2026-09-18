@@ -171,6 +171,61 @@ El equipo de GameTech Store
         current_app.logger.error(f"Error al enviar correo de reverificación de login: {e}")
         return False
 
+def send_order_pending_email(user_email, username, order):
+    """
+    Enviar correo intermedio al crear una orden que queda pendiente de pago
+    (MercadoPago aún no confirma). El correo de confirmación/rechazo definitivo
+    lo envía el webhook del Incremento 2 una vez se conozca el resultado real.
+
+    Args:
+        user_email: Email del usuario
+        username: Nombre de usuario
+        order: Objeto Order con sus items (status='pending')
+    """
+    try:
+        items = order.items.all()
+        order_items_data = []
+        for item in items:
+            order_items_data.append({
+                'nombre': item.product_name,
+                'cantidad': item.quantity,
+                'precio': item.price,
+                'subtotal': item.get_subtotal()
+            })
+
+        msg = Message(
+            subject=f'Recibimos tu orden #{order.id} - GameTech Store',
+            sender=('GameTech Store', current_app.config.get('MAIL_DEFAULT_SENDER')),
+            recipients=[user_email]
+        )
+
+        msg.html = render_template(
+            'emails/order_pending.html',
+            username=username,
+            order=order,
+            order_items=order_items_data,
+        )
+
+        msg.body = f"""
+Hola {username},
+
+Registramos tu orden #{order.id} y está esperando la confirmación del pago en MercadoPago.
+Te avisaremos por correo en cuanto se confirme.
+
+{''.join([f"- {i['nombre']} x{i['cantidad']} = ${i['subtotal']:.2f}\n" for i in order_items_data])}
+Total: ${order.total:.2f}
+
+Saludos,
+El equipo de GameTech Store
+        """
+
+        mail.send(msg)
+        return True
+
+    except Exception as e:
+        current_app.logger.error(f'Error al enviar correo de orden pendiente: {e}')
+        return False
+
 def send_order_confirmation_email(user_email, username, order):
     """
     Enviar correo de confirmación de compra al usuario.
@@ -222,4 +277,58 @@ El equipo de GameTech Store
 
     except Exception as e:
         current_app.logger.error(f"Error al enviar correo de confirmación de compra: {e}")
+        return False
+
+def send_order_rejected_email(user_email, username, order):
+    """
+    Enviar correo notificando que el pago de una orden fue rechazado.
+
+    Args:
+        user_email: Email del usuario
+        username: Nombre de usuario
+        order: Objeto Order con sus items (status='rejected')
+    """
+    try:
+        items = order.items.all()
+        order_items_data = []
+        for item in items:
+            order_items_data.append({
+                'nombre': item.product_name,
+                'cantidad': item.quantity,
+                'precio': item.price,
+                'subtotal': item.get_subtotal()
+            })
+
+        msg = Message(
+            subject=f'Tu pago no pudo procesarse - Orden #{order.id} - GameTech Store',
+            sender=('GameTech Store', current_app.config.get('MAIL_DEFAULT_SENDER')),
+            recipients=[user_email]
+        )
+
+        msg.html = render_template(
+            'emails/order_rejected.html',
+            username=username,
+            order=order,
+            order_items=order_items_data,
+        )
+
+        msg.body = f"""
+Hola {username},
+
+MercadoPago no pudo procesar el pago de tu orden #{order.id}. No se te realizó ningún cobro.
+
+{''.join([f"- {i['nombre']} x{i['cantidad']} = ${i['subtotal']:.2f}\n" for i in order_items_data])}
+Total: ${order.total:.2f}
+
+Puedes intentar de nuevo desde tu carrito cuando quieras.
+
+Saludos,
+El equipo de GameTech Store
+        """
+
+        mail.send(msg)
+        return True
+
+    except Exception as e:
+        current_app.logger.error(f"Error al enviar correo de pago rechazado: {e}")
         return False

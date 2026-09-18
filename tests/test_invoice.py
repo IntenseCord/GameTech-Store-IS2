@@ -4,6 +4,16 @@ Tests de facturación.
 Cubren la conexión de utils/email_sender.py::enviar_factura_por_email()
 al flujo real de solicitar_factura (antes, esa función existía pero nadie
 la llamaba — ver hallazgo de la revisión general del proyecto, 2026-09-04).
+
+Regresión (revisión de código 2026-09-15): solicitar_factura() nunca
+chequeaba order.status -- antes de Incremento 2 (pagos con MercadoPago)
+todas las órdenes se creaban directamente como 'completed', así que "toda
+orden del usuario" y "toda orden pagada" eran el mismo conjunto y la
+falta de chequeo no se notaba. Al pasar a crear órdenes como 'pending'
+(confirmadas después por el webhook), un usuario podía facturar una orden
+'pending' o 'rejected' navegando directo a la URL -- el botón solo se
+ocultaba en el template, la ruta no estaba protegida. Fix: solicitar_factura()
+ahora exige status in ('completed', 'approved').
 """
 import uuid
 
@@ -45,6 +55,27 @@ def test_pagina_solicitar_factura_no_crashea_con_total_decimal(client, test_user
     response = client.get(f'/factura/solicitar/{order.id}')
 
     assert response.status_code == 200
+
+
+def test_solicitar_factura_de_orden_no_aprobada_es_rechazada(client, test_user):
+    """Regresión: solicitar_factura no chequeaba order.status -- una orden
+    'pending' o 'rejected' (posibles desde el Incremento 2 de pagos) podía
+    facturarse igual navegando directo a la URL, aunque nunca se haya
+    cobrado nada."""
+    login(client)
+    order = Order(user_id=test_user.id, total=59.99, status='pending')
+    db.session.add(order)
+    db.session.flush()
+    db.session.add(OrderItem(
+        order_id=order.id, product_type='game', product_id=1,
+        product_name='Test Game', quantity=1, price=59.99
+    ))
+    db.session.commit()
+
+    response = client.post(f'/factura/solicitar/{order.id}', data=datos_factura_validos())
+
+    assert response.status_code == 302
+    assert Invoice.query.filter_by(order_id=order.id).first() is None, 'no debe crearse factura para una orden no aprobada'
 
 
 def test_solicitar_factura_envia_email_con_la_factura(client, test_user, monkeypatch):

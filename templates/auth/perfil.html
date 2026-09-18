@@ -63,7 +63,7 @@
                                         <td>{{ order.created_at.strftime('%d/%m/%Y') }}</td>
                                         <td class="text-right"><strong>${{ "%.2f"|format(order.total) }}</strong></td>
                                         <td class="text-center">
-                                            {% if order.status == 'completed' %}
+                                            {% if order.status in ('completed', 'approved') %}
                                                 <span class="badge bg-success"><i class="fas fa-check me-1"></i>Completada</span>
                                             {% elif order.status == 'pending' %}
                                                 <span class="badge bg-warning"><i class="fas fa-clock me-1"></i>Pendiente</span>

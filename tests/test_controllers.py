@@ -1,10 +1,6 @@
 """
 Tests de controladores
 """
-import pytest
-from flask import url_for
-
-
 def test_index_page(client):
     """Test de página principal"""
     response = client.get('/')

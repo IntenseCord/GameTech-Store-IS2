@@ -115,7 +115,7 @@
                                                 <td><i class="fas fa-shopping-bag me-2"></i>{{ orden.user.username }}</td>
                                                 <td class="text-right"><strong>${{ "%.2f"|format(orden.total) }}</strong></td>
                                                 <td class="text-center">
-                                                    {% if orden.status == 'completed' %}
+                                                    {% if orden.status in ('completed', 'approved') %}
                                                         <span class="badge bg-success"><i class="fas fa-check me-1"></i>Completada</span>
                                                     {% elif orden.status == 'pending' %}
                                                         <span class="badge bg-warning"><i class="fas fa-clock me-1"></i>Pendiente</span>

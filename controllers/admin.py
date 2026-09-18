@@ -6,9 +6,9 @@ from flask_login import login_required, current_user
 from functools import wraps
 from sqlalchemy.exc import SQLAlchemyError
 from extensions import db
-from models.database_models import User, Game, Hardware, Order, OrderItem
-from werkzeug.utils import secure_filename
+from models.database_models import User, Game, Hardware, Order
 from utils.error_handling import log_db_error
+from utils.order_stock import descontar_stock, restaurar_stock
 import os
 from datetime import datetime
 
@@ -527,7 +527,20 @@ def actualizar_estado_orden(order_id):
     try:
         order = Order.query.get_or_404(order_id)
         nuevo_estado = request.form.get('status')
-        if nuevo_estado in ['pending', 'completed', 'cancelled']:
+        # 'completed' es un valor heredado de antes del Incremento 1 (pagos):
+        # se deja como valor válido por compatibilidad con órdenes viejas, no
+        # como destino nuevo. approved/rejected son los que pone el webhook
+        # de MercadoPago; el admin puede corregirlos manualmente si hace falta.
+        if nuevo_estado in ['pending', 'approved', 'rejected', 'completed', 'cancelled']:
+            estado_anterior = order.status
+            # Mismo criterio de ajuste de stock que usa el webhook de
+            # MercadoPago (utils/order_stock.py), para que una corrección
+            # manual del admin no desincronice el inventario.
+            if nuevo_estado == 'rejected' and estado_anterior != 'rejected':
+                restaurar_stock(order)
+            elif nuevo_estado in ('approved', 'completed') and estado_anterior == 'rejected':
+                descontar_stock(order)
+
             order.status = nuevo_estado
             db.session.commit()
             flash('Estado de la orden actualizado', 'success')

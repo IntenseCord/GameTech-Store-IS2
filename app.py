@@ -14,7 +14,7 @@ from flask_login import current_user
 from flask_wtf.csrf import CSRFProtect
 
 from config import config, Config
-from extensions import db, mail, login_manager
+from extensions import db, mail, login_manager, migrate
 from database import seed_database
 from models.database_models import Game, Hardware, User, CartItem
 from utils.rate_limiter import init_limiter
@@ -52,6 +52,7 @@ app.logger.info('✅ CSRF Protection habilitado')
 db.init_app(app)
 mail.init_app(app)
 login_manager.init_app(app)
+migrate.init_app(app, db)
 
 # Inicializar seguridad y monitoreo
 limiter = init_limiter(app)
@@ -75,6 +76,7 @@ from controllers.admin import admin_bp
 from controllers.hardware_analyzer import analyzer_bp
 from controllers.invoice import invoice_bp
 from controllers.wishlist import wishlist_bp
+from controllers.webhooks import webhooks_bp
 
 app.register_blueprint(store_bp)
 app.register_blueprint(hardware_bp)
@@ -84,6 +86,12 @@ app.register_blueprint(admin_bp)
 app.register_blueprint(analyzer_bp)
 app.register_blueprint(invoice_bp)
 app.register_blueprint(wishlist_bp)
+app.register_blueprint(webhooks_bp)
+
+# MercadoPago llama a este webhook server-to-server: no hay sesión ni token
+# CSRF que pueda mandar, así que se exime de la protección global (la
+# autenticidad de la notificación se valida por firma, ver controllers/webhooks.py).
+csrf.exempt(webhooks_bp)
 
 # Configurar logging
 if not app.debug:
@@ -148,6 +156,14 @@ if __name__ == '__main__':
     # Inicializar la base de datos
     with app.app_context():
         db.create_all()
+        # db.create_all() ya deja las tablas con todas las columnas del
+        # modelo actual (incluidas las que agregan migraciones nuevas como
+        # payment_id/payment_method), pero no registra ningún historial de
+        # Alembic. Sin este stamp, un `flask db upgrade` posterior intenta
+        # aplicar esas migraciones sobre columnas que ya existen y falla con
+        # "columna duplicada". stamp() es un no-op si ya hay historial.
+        from flask_migrate import stamp
+        stamp()
         # Poblar con datos iniciales si está vacía
         if Game.query.count() == 0:
             seed_database()
