@@ -9,6 +9,9 @@ ninguna acción que un tercero pueda forzar) y no requiere sesión.
 from typing import Optional
 
 import strawberry
+from strawberry.extensions import (
+    DisableIntrospection, MaxAliasesLimiter, MaxTokensLimiter, QueryDepthLimiter,
+)
 from strawberry.flask.views import GraphQLView
 
 from extensions import db
@@ -17,6 +20,12 @@ from utils.rate_limiter import limiter, rate_limit_graphql
 
 LIMITE_MAXIMO = 50
 LIMITE_POR_DEFECTO = 10
+
+# Límites contra consultas abusivas. Medido: una consulta normal del catálogo
+# pesa ~30 tokens y la del explorador (introspección) ~160.
+PROFUNDIDAD_MAXIMA = 5   # se cuenta desde 0; hoy las consultas llegan a 1 (juegos -> campo): margen para relaciones futuras
+ALIAS_MAXIMOS = 5        # cada alias repite una lista completa: sin tope, 100 alias = 100 x 50 filas
+TOKENS_MAXIMOS = 1000    # evita documentos gigantes antes de analizarlos
 
 
 def _acotar(limite):
@@ -77,12 +86,34 @@ class Query:
         return db.session.get(Hardware, id)
 
 
-schema = strawberry.Schema(query=Query)
+def extensiones_de_seguridad(produccion):
+    """En producción se desactiva además la introspección: es lo que permite a
+    un tercero listar todo el esquema (el explorador solo se usa en desarrollo)."""
+    extensiones = [
+        QueryDepthLimiter(max_depth=PROFUNDIDAD_MAXIMA),
+        MaxAliasesLimiter(max_alias_count=ALIAS_MAXIMOS),
+        MaxTokensLimiter(max_token_count=TOKENS_MAXIMOS),
+    ]
+    if produccion:
+        extensiones.append(DisableIntrospection())
+    return extensiones
+
+
+def crear_schema(produccion=False):
+    return strawberry.Schema(query=Query, extensions=extensiones_de_seguridad(produccion))
+
+
+schema = crear_schema()
 
 
 def init_graphql(app, csrf):
     """Registra /graphql. Se llama desde app.py, después de init_limiter."""
-    vista = GraphQLView.as_view('graphql', schema=schema, graphql_ide='graphiql')
+    produccion = app.config.get('ENV') == 'production'
+    vista = GraphQLView.as_view(
+        'graphql',
+        schema=crear_schema(produccion),
+        graphql_ide=None if produccion else 'graphiql',
+    )
     vista = limiter.limit(rate_limit_graphql)(vista)
     csrf.exempt(vista)
     app.add_url_rule('/graphql', view_func=vista, methods=['GET', 'POST'])

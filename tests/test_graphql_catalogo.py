@@ -11,11 +11,20 @@ Regresiones que se vigilan a propósito (ya nos pasaron en este proyecto):
 - Consultas repetidas por elemento (N+1): una lista debe costar 1 sentencia SQL
   sin importar cuántos elementos tenga.
 """
+from typing import Optional
+
+import strawberry
+from flask import Flask
+from flask_wtf.csrf import CSRFProtect
+from graphql import get_introspection_query
 from sqlalchemy import event
 
 from extensions import db
 from models.database_models import Game, Hardware
-from controllers.graphql_api import LIMITE_MAXIMO
+from controllers.graphql_api import (
+    ALIAS_MAXIMOS, LIMITE_MAXIMO, PROFUNDIDAD_MAXIMA, TOKENS_MAXIMOS,
+    crear_schema, extensiones_de_seguridad, init_graphql,
+)
 
 
 def crear_juegos(cantidad, genero='Acción'):
@@ -174,6 +183,100 @@ def test_funciona_con_csrf_activo_porque_es_de_solo_lectura(client_csrf):
 
     assert respuesta.status_code == 200
     assert 'data' in respuesta.get_json()
+
+
+def test_rechaza_mas_alias_del_maximo(client):
+    """Cada alias repite una lista completa: sin tope, 100 alias = 100 x 50 filas por petición."""
+    alias = ' '.join(f'a{i}: juegos {{ id }}' for i in range(ALIAS_MAXIMOS + 1))
+
+    respuesta = consultar(client, '{ ' + alias + ' }').get_json()
+
+    assert 'aliases' in respuesta['errors'][0]['message']
+
+
+def test_acepta_alias_hasta_el_maximo(client):
+    crear_juegos(1)
+    alias = ' '.join(f'a{i}: juegos {{ id }}' for i in range(ALIAS_MAXIMOS))
+
+    respuesta = consultar(client, '{ ' + alias + ' }').get_json()
+
+    assert 'errors' not in respuesta
+    assert len(respuesta['data']) == ALIAS_MAXIMOS
+
+
+def test_rechaza_consultas_demasiado_largas(client):
+    campos = ' '.join(['nombre'] * (TOKENS_MAXIMOS + 50))
+
+    respuesta = consultar(client, '{ juegos { ' + campos + ' } }').get_json()
+
+    assert 'tokens' in respuesta['errors'][0]['message']
+
+
+@strawberry.type
+class _Nodo:
+    nombre: str
+
+    @strawberry.field
+    def hijo(self) -> Optional['_Nodo']:
+        return _Nodo(nombre='hijo')
+
+
+@strawberry.type
+class _ConsultaRecursiva:
+    @strawberry.field
+    def raiz(self) -> _Nodo:
+        return _Nodo(nombre='raiz')
+
+
+def _consulta_con_niveles(niveles):
+    """Consulta con exactamente `niveles` llaves anidadas."""
+    interior = 'nombre'
+    for _ in range(niveles - 2):
+        interior = f'hijo {{ {interior} }}'
+    return f'{{ raiz {{ {interior} }} }}'
+
+
+def test_limite_de_profundidad_con_un_esquema_recursivo():
+    """El esquema del catálogo es plano hoy; se prueba con uno recursivo para
+    verificar que el límite configurado protege cuando haya relaciones.
+
+    Strawberry cuenta la profundidad desde 0 (el campo raíz es 0): con
+    PROFUNDIDAD_MAXIMA = 5 se aceptan hasta 6 niveles de llaves y se rechaza el 7."""
+    schema = strawberry.Schema(query=_ConsultaRecursiva, extensions=extensiones_de_seguridad(False))
+
+    en_el_limite = schema.execute_sync(_consulta_con_niveles(PROFUNDIDAD_MAXIMA + 1))
+    excedida = schema.execute_sync(_consulta_con_niveles(PROFUNDIDAD_MAXIMA + 2))
+
+    assert not en_el_limite.errors
+    assert 'depth' in excedida.errors[0].message
+
+
+def test_introspeccion_permitida_en_desarrollo(client):
+    """El explorador (GraphiQL) la necesita; los límites no deben romperlo."""
+    respuesta = consultar(client, get_introspection_query()).get_json()
+
+    assert 'errors' not in respuesta
+    assert respuesta['data']['__schema']['types']
+
+
+def test_introspeccion_desactivada_en_produccion():
+    resultado = crear_schema(produccion=True).execute_sync(get_introspection_query())
+
+    assert 'introspection' in resultado.errors[0].message
+    assert crear_schema(produccion=False).execute_sync(get_introspection_query()).data
+
+
+def test_ruta_sin_explorador_en_produccion(client):
+    """En desarrollo GET /graphql abre GraphiQL; en producción no debe existir."""
+    dev = client.get('/graphql', headers={'Accept': 'text/html'})
+    assert 'graphiql' in dev.get_data(as_text=True).lower()
+
+    app_prod = Flask(__name__)
+    app_prod.config['ENV'] = 'production'
+    init_graphql(app_prod, CSRFProtect(app_prod))
+    prod = app_prod.test_client().get('/graphql', headers={'Accept': 'text/html'})
+
+    assert 'graphiql' not in prod.get_data(as_text=True).lower()
 
 
 def test_rechaza_post_que_no_es_json(client):
