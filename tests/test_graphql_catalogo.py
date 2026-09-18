@@ -107,6 +107,21 @@ def test_hardware_por_tipo_y_componente_por_id(client):
     assert por_id['componente'] == {'tipo': 'CPU', 'marca': 'Marca'}
 
 
+def test_campos_con_guion_bajo_se_piden_en_camel_case(client):
+    """Strawberry expone `benchmark_score` como `benchmarkScore` (convención de
+    GraphQL). Lo encontramos probando contra la base real: los demás tests solo
+    usaban campos de una palabra."""
+    hw = crear_hardware('CPU')[0]
+    hw.benchmark_score, hw.tdp_watts, hw.socket = 9000, 65, 'AM5'
+    db.session.commit()
+
+    datos = consultar(client, f'{{ componente(id: {hw.id}) {{ benchmarkScore tdpWatts socket }} }}').get_json()['data']
+    error = consultar(client, f'{{ componente(id: {hw.id}) {{ benchmark_score }} }}').get_json()
+
+    assert datos['componente'] == {'benchmarkScore': 9000, 'tdpWatts': 65, 'socket': 'AM5'}
+    assert 'benchmarkScore' in error['errors'][0]['message']
+
+
 def test_dos_colecciones_en_una_sola_peticion(client):
     crear_juegos(1)
     crear_hardware('RAM')
