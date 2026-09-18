@@ -7,9 +7,8 @@ from reportlab.lib import colors
 from reportlab.lib.units import inch
 from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer
 from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
-from reportlab.lib.enums import TA_CENTER, TA_RIGHT, TA_LEFT
+from reportlab.lib.enums import TA_CENTER
 import os
-from datetime import datetime
 import qrcode
 from io import BytesIO
 

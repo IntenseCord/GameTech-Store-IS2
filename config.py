@@ -66,6 +66,13 @@ class Config:
     # Configuración de sesiones
     PERMANENT_SESSION_LIFETIME = 3600  # 1 hora
 
+    # Pagos (MercadoPago + PSE)
+    MERCADOPAGO_ACCESS_TOKEN = os.environ.get('MERCADOPAGO_ACCESS_TOKEN')
+    # Clave secreta de webhooks (distinta del access token) -- se obtiene en
+    # el panel de MercadoPago, sección "Webhooks" de la aplicación. Se usa
+    # para validar la firma x-signature de cada notificación entrante.
+    MERCADOPAGO_WEBHOOK_SECRET = os.environ.get('MERCADOPAGO_WEBHOOK_SECRET')
+
     @staticmethod
     def init_app(app):
         """Hook de inicialización por ambiente. No-op por defecto; los ambientes

@@ -8,6 +8,8 @@ click==8.3.0
 # Base de datos
 Flask-SQLAlchemy==3.1.1
 SQLAlchemy==2.0.48
+Flask-Migrate==4.1.0
+alembic==1.18.4
 
 # Autenticación
 Flask-Login==0.6.3
@@ -49,6 +51,9 @@ sentry-sdk==2.57.0
 # Generación de PDFs y QR
 reportlab==4.2.0
 qrcode[pil]==8.0
+
+# Pagos (MercadoPago + PSE)
+mercadopago==3.5.0
 
 # API GraphQL (catálogo de solo lectura)
 strawberry-graphql==0.327.7

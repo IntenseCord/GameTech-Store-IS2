@@ -8,12 +8,27 @@
         <div class="col-md-8">
             <div class="card shadow-lg">
                 <div class="card-body text-center py-5">
-                    <i class="fas fa-check-circle fa-5x text-success mb-4"></i>
-                    <h2 class="mb-3">¡Compra Realizada con Éxito!</h2>
-                    <p class="lead text-muted mb-4">
-                        Tu orden ha sido procesada correctamente. Recibirás un email de confirmación en breve.
-                    </p>
-                    
+                    {% if order.status == 'pending' %}
+                        <i class="fas fa-clock fa-5x text-warning mb-4"></i>
+                        <h2 class="mb-3">Tu pago está pendiente de confirmación</h2>
+                        <p class="lead text-muted mb-4">
+                            Tu orden fue registrada y está esperando la confirmación del pago en MercadoPago.
+                            Te notificaremos por correo en cuanto se confirme.
+                        </p>
+                    {% elif order.status == 'rejected' %}
+                        <i class="fas fa-times-circle fa-5x text-danger mb-4"></i>
+                        <h2 class="mb-3">Tu pago no pudo procesarse</h2>
+                        <p class="lead text-muted mb-4">
+                            MercadoPago rechazó el pago de esta orden. Puedes intentar de nuevo desde tu carrito.
+                        </p>
+                    {% else %}
+                        <i class="fas fa-check-circle fa-5x text-success mb-4"></i>
+                        <h2 class="mb-3">¡Compra Realizada con Éxito!</h2>
+                        <p class="lead text-muted mb-4">
+                            Tu orden ha sido procesada correctamente. Recibirás un email de confirmación en breve.
+                        </p>
+                    {% endif %}
+
                     <div class="alert alert-info">
                         <strong>Número de Orden:</strong> #{{ order.id }}
                     </div>
@@ -22,8 +37,9 @@
                         <div class="col-md-6">
                             <h5 class="text-dark">Detalles de la Orden</h5>
                             <p class="mb-1 text-dark"><strong>Fecha:</strong> {{ order.created_at.strftime('%d/%m/%Y %H:%M') }}</p>
-                            <p class="mb-1 text-dark"><strong>Estado:</strong> 
-                                <span class="badge bg-success">{{ order.status }}</span>
+                            <p class="mb-1 text-dark"><strong>Estado:</strong>
+                                {% set badge_class = {'pending': 'bg-warning text-dark', 'rejected': 'bg-danger', 'cancelled': 'bg-secondary'}.get(order.status, 'bg-success') %}
+                                <span class="badge {{ badge_class }}">{{ order.status }}</span>
                             </p>
                             <p class="mb-1 text-dark"><strong>Total:</strong> ${{ "%.2f"|format(order.total) }}</p>
                         </div>

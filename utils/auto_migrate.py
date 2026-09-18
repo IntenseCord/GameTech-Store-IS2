@@ -5,7 +5,6 @@ Sistema de migraciones automáticas
 from flask import current_app
 from extensions import db
 from sqlalchemy import text, inspect
-import os
 
 def check_column_exists(table_name, column_name):
     """Verificar si una columna existe en una tabla"""

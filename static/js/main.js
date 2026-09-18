@@ -206,26 +206,35 @@ function initializeShoppingCart() {
         }
     }
 
-    function showToast(message, type) {
-        const toast = document.createElement('div');
-        toast.className = `toast align-items-center text-white bg-${type} border-0`;
-        toast.innerHTML = `
-            <div class="d-flex">
-                <div class="toast-body">${message}</div>
-                <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast"></button>
-            </div>
-        `;
+}
 
-        document.body.appendChild(toast);
-        const bsToast = new bootstrap.Toast(toast);
-        bsToast.show();
+/**
+ * Mostrar una notificación tipo "toast" (Bootstrap). Función global: antes
+ * estaba definida dentro de initializeCommonFeatures() y cada página que la
+ * necesitaba tenía su propia copia local (main.js la exponía solo hacia
+ * adentro de esa función). Ahora vive a nivel de archivo, así que cualquier
+ * plantilla que cargue main.js (todas, vía base.html) puede llamarla
+ * directamente sin copiarla.
+ */
+function showToast(message, type) {
+    const toast = document.createElement('div');
+    toast.className = `toast align-items-center text-white bg-${type} border-0`;
+    toast.innerHTML = `
+        <div class="d-flex">
+            <div class="toast-body">${message}</div>
+            <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast"></button>
+        </div>
+    `;
 
-        setTimeout(() => {
-            if (document.body.contains(toast)) {
-                toast.remove();
-            }
-        }, 3000);
-    }
+    document.body.appendChild(toast);
+    const bsToast = new bootstrap.Toast(toast);
+    bsToast.show();
+
+    setTimeout(() => {
+        if (document.body.contains(toast)) {
+            toast.remove();
+        }
+    }, 3000);
 }
 
 /**

@@ -1,9 +1,8 @@
 """
 Controlador de Wishlist (Lista de Deseos)
 """
-from flask import Blueprint, render_template, request, jsonify, redirect, url_for
+from flask import Blueprint, render_template, request, jsonify
 from flask_login import login_required, current_user
-from extensions import db
 from models.database_models import Wishlist, Game, Hardware
 
 wishlist_bp = Blueprint('wishlist', __name__, url_prefix='/wishlist')
