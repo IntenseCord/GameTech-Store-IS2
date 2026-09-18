@@ -77,6 +77,7 @@ from controllers.hardware_analyzer import analyzer_bp
 from controllers.invoice import invoice_bp
 from controllers.wishlist import wishlist_bp
 from controllers.webhooks import webhooks_bp
+from controllers.graphql_api import init_graphql
 
 app.register_blueprint(store_bp)
 app.register_blueprint(hardware_bp)
@@ -92,6 +93,10 @@ app.register_blueprint(webhooks_bp)
 # CSRF que pueda mandar, así que se exime de la protección global (la
 # autenticidad de la notificación se valida por firma, ver controllers/webhooks.py).
 csrf.exempt(webhooks_bp)
+
+# API GraphQL del catálogo (solo lectura, sin sesión): se exime de CSRF porque
+# no hay mutaciones que un tercero pueda forzar. Ver controllers/graphql_api.py.
+init_graphql(app, csrf)
 
 # Configurar logging
 if not app.debug:
