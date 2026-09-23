@@ -200,3 +200,69 @@ def test_eliminar_juego_borra_la_imagen_subida_del_disco(client):
     finally:
         if os.path.exists(ruta_disco):
             os.remove(ruta_disco)
+
+
+def test_formulario_de_edicion_de_juego_sin_imagen_no_falla(client):
+    """Regresión: un juego creado desde el panel sin subir imagen guarda
+    `imagen = None`, y juego_form.html hacía `game.imagen.startswith('http')`
+    sobre None -- el formulario de edición fallaba y el admin era redirigido
+    con un error, sin poder editar ese producto."""
+    crear_admin_logueado(client)
+    client.post('/admin/juego/nuevo', data={
+        'nombre': 'Juego sin imagen', 'descripcion': 'd', 'genero': 'Acción', 'desarrollador': 'dev',
+        'precio': '10', 'stock': '1', 'fecha_lanzamiento': '2024-01-01',
+        'requisitos_minimos': '', 'requisitos_recomendados': ''
+    })
+    juego = Game.query.filter_by(nombre='Juego sin imagen').first()
+    assert juego is not None and juego.imagen is None
+
+    response = client.get(f'/admin/juego/{juego.id}/editar')
+
+    assert response.status_code == 200
+    assert b'Juego sin imagen' in response.data
+
+
+def test_formulario_de_edicion_de_hardware_sin_imagen_no_falla(client):
+    """Regresión: mismo defecto que el de juegos, en hardware_form.html."""
+    crear_admin_logueado(client)
+    client.post('/admin/hardware/nuevo', data={
+        'tipo': 'CPU', 'marca': 'AMD', 'modelo': 'Sin imagen', 'precio': '100',
+        'stock': '1', 'especificaciones': '{}'
+    })
+    hardware = Hardware.query.filter_by(modelo='Sin imagen').first()
+    assert hardware is not None and hardware.imagen is None
+
+    response = client.get(f'/admin/hardware/{hardware.id}/editar')
+
+    assert response.status_code == 200
+    assert b'Sin imagen' in response.data
+
+
+def test_formulario_de_edicion_muestra_la_url_de_la_imagen_solo_si_es_una_url(client):
+    """Comportamiento que se conserva: una imagen con URL se muestra en el campo
+    de URL; una imagen subida al servidor (ruta local) no."""
+    crear_admin_logueado(client)
+    con_url = Game(nombre='Con URL', descripcion='d', precio=10, genero='Acción', desarrollador='dev',
+                   stock=1, imagen='https://ejemplo.com/portada.jpg')
+    subida = Game(nombre='Subida', descripcion='d', precio=10, genero='Acción', desarrollador='dev',
+                  stock=1, imagen='/static/uploads/portada.jpg')
+    db.session.add_all([con_url, subida])
+    db.session.commit()
+
+    html_url = client.get(f'/admin/juego/{con_url.id}/editar').data
+    html_subida = client.get(f'/admin/juego/{subida.id}/editar').data
+
+    assert b'value="https://ejemplo.com/portada.jpg"' in html_url
+    assert b'value="/static/uploads/portada.jpg"' not in html_subida
+
+
+def test_formulario_de_edicion_de_hardware_muestra_la_url_de_la_imagen(client):
+    crear_admin_logueado(client)
+    hardware = Hardware(tipo='CPU', marca='AMD', modelo='Con URL', precio=100, especificaciones='{}',
+                        stock=1, imagen='https://ejemplo.com/cpu.jpg')
+    db.session.add(hardware)
+    db.session.commit()
+
+    html = client.get(f'/admin/hardware/{hardware.id}/editar').data
+
+    assert b'value="https://ejemplo.com/cpu.jpg"' in html
