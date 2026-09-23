@@ -41,6 +41,12 @@ def rate_limit_search():
     """Límite para búsquedas - 20 por minuto"""
     return "20 per minute"
 
+def rate_limit_graphql():
+    """Límite para el endpoint GraphQL de solo lectura - 60 por minuto.
+    Reemplaza al límite global (50 por hora) en esa ruta: es demasiado bajo
+    para una API que se consulta de forma interactiva."""
+    return "60 per minute"
+
 def rate_limit_email_sensible():
     """Límite para rutas que envían correo a partir de un email arbitrario del
     formulario (recuperar contraseña, reenviar verificación) - 3 por hora.

@@ -54,3 +54,7 @@ qrcode[pil]==8.0
 
 # Pagos (MercadoPago + PSE)
 mercadopago==3.5.0
+
+# API GraphQL (catálogo de solo lectura)
+strawberry-graphql==0.327.7
+graphql-core==3.2.12
