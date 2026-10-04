@@ -38,8 +38,8 @@ Pillow>=10.3.0
 # Utilidades
 python-dotenv==1.2.1
 
-# PostgreSQL (para Neon u otros servicios - opcional)
-psycopg==3.2.0
+# PostgreSQL (Neon): requerido cuando DATABASE_URL apunta a PostgreSQL
+psycopg2-binary==2.9.12
 
 # Seguridad y Rate Limiting
 Flask-Limiter==4.1.0
