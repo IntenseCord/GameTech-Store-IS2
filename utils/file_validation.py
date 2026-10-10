@@ -5,7 +5,6 @@ import os
 import uuid
 from werkzeug.utils import secure_filename
 from PIL import Image
-import imghdr
 
 
 ALLOWED_EXTENSIONS = {'jpg', 'jpeg', 'png', 'webp'}
@@ -47,14 +46,11 @@ def validate_file_upload(file):
     try:
         file.seek(0)
         img = Image.open(file)
-        file.seek(0)
-        
+        # Formato real según el contenido (no la extensión); imghdr ya no existe en Python 3.13+
+        format_detected = (img.format or '').lower()
+
         # Verificar que el archivo es realmente una imagen
         img.verify()
-        file.seek(0)
-        
-        # Validar formato de imagen
-        format_detected = imghdr.what(file)
         file.seek(0)
         
         if format_detected not in ['jpeg', 'png', 'webp']:

@@ -16,6 +16,11 @@ UPLOAD = 'static/uploads'
 ADMIN_JUEGOS = 'admin.juegos'
 ADMIN_HARDWARE = 'admin.hardware'
 
+
+def url_publica_de_imagen(filename):
+    """URL guardada en la base de datos: siempre con '/', sin el separador del sistema."""
+    return f'/{UPLOAD}/{filename}'
+
 admin_bp = Blueprint('admin', __name__)
 
 def admin_required(f):
@@ -44,9 +49,8 @@ def dashboard():
             'usuarios_recientes': User.query.order_by(User.created_at.desc()).limit(5).all()
         }
         return render_template('admin/dashboard.html', stats=stats)
-    except Exception as e:
-        from flask import current_app
-        current_app.logger.error(f'Error en dashboard: {str(e)}')
+    except SQLAlchemyError as e:
+        log_db_error('dashboard', e)
         flash('Error al cargar el dashboard', 'danger')
         return redirect(url_for('index'))
 
@@ -58,9 +62,8 @@ def usuarios():
     try:
         users = User.query.all()
         return render_template('admin/usuarios.html', users=users)
-    except Exception as e:
-        from flask import current_app
-        current_app.logger.error(f'Error en usuarios: {str(e)}')
+    except SQLAlchemyError as e:
+        log_db_error('usuarios', e)
         flash('Error al cargar usuarios', 'danger')
         return redirect(url_for('admin.dashboard'))
 
@@ -91,9 +94,8 @@ def juegos():
     try:
         games = Game.query.all()
         return render_template('admin/juegos.html', games=games)
-    except Exception as e:
-        from flask import current_app
-        current_app.logger.error(f'Error en juegos: {str(e)}')
+    except SQLAlchemyError as e:
+        log_db_error('juegos', e)
         flash('Error al cargar juegos', 'danger')
         return redirect(url_for('admin.dashboard'))
 
@@ -158,7 +160,7 @@ def nuevo_juego():
                     # Generar nombre único y guardar
                     filename = generate_unique_filename(imagen.filename)
                     imagen.save(os.path.join(UPLOAD, filename))
-                    imagen_path = os.path.join('/' + UPLOAD, filename)
+                    imagen_path = url_publica_de_imagen(filename)
                 elif imagen_url:
                     # Validar URL de manera segura
                     from utils.file_validation import validate_image_url
@@ -187,12 +189,14 @@ def nuevo_juego():
                 return redirect(url_for(ADMIN_JUEGOS))
             except SQLAlchemyError as e:
                 log_db_error('nuevo_juego', e)
-                flash(f'Error al crear juego: {str(e)}', 'danger')
-        
+                flash('Error al crear juego', 'danger')
+            except OSError as e:
+                log_db_error('nuevo_juego (guardar imagen)', e)
+                flash('No se pudo guardar la imagen', 'danger')
+
         return render_template('admin/juego_form.html')
-    except Exception as e:
-        from flask import current_app
-        current_app.logger.error(f'Error en nuevo_juego: {str(e)}')
+    except SQLAlchemyError as e:
+        log_db_error('nuevo_juego', e)
         flash('Error al procesar la solicitud', 'danger')
         return redirect(url_for(ADMIN_JUEGOS))
 
@@ -255,7 +259,7 @@ def editar_juego(game_id):
                     # Generar nombre único y guardar
                     filename = generate_unique_filename(imagen.filename)
                     imagen.save(os.path.join(UPLOAD, filename))
-                    game.imagen = os.path.join('/' + UPLOAD, filename)
+                    game.imagen = url_publica_de_imagen(filename)
                 elif imagen_url:
                     # Validar URL de manera segura
                     from utils.file_validation import validate_image_url
@@ -281,12 +285,14 @@ def editar_juego(game_id):
                 return redirect(url_for(ADMIN_JUEGOS))
             except SQLAlchemyError as e:
                 log_db_error('editar_juego', e)
-                flash(f'Error al actualizar juego: {str(e)}', 'danger')
-        
+                flash('Error al actualizar juego', 'danger')
+            except OSError as e:
+                log_db_error('editar_juego (guardar imagen)', e)
+                flash('No se pudo guardar la imagen', 'danger')
+
         return render_template('admin/juego_form.html', game=game)
-    except Exception as e:
-        from flask import current_app
-        current_app.logger.error(f'Error en editar_juego: {str(e)}')
+    except SQLAlchemyError as e:
+        log_db_error('editar_juego', e)
         flash('Error al procesar la solicitud', 'danger')
         return redirect(url_for(ADMIN_JUEGOS))
 
@@ -298,9 +304,8 @@ def hardware():
     try:
         components = Hardware.query.all()
         return render_template('admin/hardware.html', components=components)
-    except Exception as e:
-        from flask import current_app
-        current_app.logger.error(f'Error en hardware: {str(e)}')
+    except SQLAlchemyError as e:
+        log_db_error('hardware', e)
         flash('Error al cargar hardware', 'danger')
         return redirect(url_for('admin.dashboard'))
 
@@ -364,7 +369,7 @@ def nuevo_hardware():
                     # Generar nombre único y guardar
                     filename = generate_unique_filename(imagen.filename)
                     imagen.save(os.path.join(UPLOAD, filename))
-                    imagen_path = os.path.join('/' + UPLOAD, filename)
+                    imagen_path = url_publica_de_imagen(filename)
                 elif imagen_url:
                     # Validar URL de manera segura
                     from utils.file_validation import validate_image_url
@@ -391,12 +396,14 @@ def nuevo_hardware():
                 return redirect(url_for(ADMIN_HARDWARE))
             except SQLAlchemyError as e:
                 log_db_error('nuevo_hardware', e)
-                flash(f'Error al crear componente: {str(e)}', 'danger')
-        
+                flash('Error al crear componente', 'danger')
+            except OSError as e:
+                log_db_error('nuevo_hardware (guardar imagen)', e)
+                flash('No se pudo guardar la imagen', 'danger')
+
         return render_template('admin/hardware_form.html')
-    except Exception as e:
-        from flask import current_app
-        current_app.logger.error(f'Error en nuevo_hardware: {str(e)}')
+    except SQLAlchemyError as e:
+        log_db_error('nuevo_hardware', e)
         flash('Error al procesar la solicitud', 'danger')
         return redirect(url_for(ADMIN_HARDWARE))
 
@@ -458,7 +465,7 @@ def editar_hardware(hardware_id):
                     # Generar nombre único y guardar
                     filename = generate_unique_filename(imagen.filename)
                     imagen.save(os.path.join(UPLOAD, filename))
-                    component.imagen = os.path.join('/' + UPLOAD, filename)
+                    component.imagen = url_publica_de_imagen(filename)
                 elif imagen_url:
                     # Validar URL de manera segura
                     from utils.file_validation import validate_image_url
@@ -482,12 +489,14 @@ def editar_hardware(hardware_id):
                 return redirect(url_for(ADMIN_HARDWARE))
             except SQLAlchemyError as e:
                 log_db_error('editar_hardware', e)
-                flash(f'Error al actualizar componente: {str(e)}', 'danger')
-        
+                flash('Error al actualizar componente', 'danger')
+            except OSError as e:
+                log_db_error('editar_hardware (guardar imagen)', e)
+                flash('No se pudo guardar la imagen', 'danger')
+
         return render_template('admin/hardware_form.html', hardware=component)
-    except Exception as e:
-        from flask import current_app
-        current_app.logger.error(f'Error en editar_hardware: {str(e)}')
+    except SQLAlchemyError as e:
+        log_db_error('editar_hardware', e)
         flash('Error al procesar la solicitud', 'danger')
         return redirect(url_for(ADMIN_HARDWARE))
 
@@ -499,9 +508,8 @@ def ordenes():
     try:
         orders = Order.query.order_by(Order.created_at.desc()).all()
         return render_template('admin/ordenes.html', orders=orders)
-    except Exception as e:
-        from flask import current_app
-        current_app.logger.error(f'Error en ordenes: {str(e)}')
+    except SQLAlchemyError as e:
+        log_db_error('ordenes', e)
         flash('Error al cargar órdenes', 'danger')
         return redirect(url_for('admin.dashboard'))
 
@@ -513,9 +521,8 @@ def ver_orden(order_id):
     try:
         order = db.get_or_404(Order, order_id)
         return render_template('admin/orden_detalle.html', order=order)
-    except Exception as e:
-        from flask import current_app
-        current_app.logger.error(f'Error en ver_orden: {str(e)}')
+    except SQLAlchemyError as e:
+        log_db_error('ver_orden', e)
         flash('Error al cargar la orden', 'danger')
         return redirect(url_for('admin.ordenes'))
 
@@ -582,7 +589,7 @@ def eliminar_juego(game_id):
         return redirect(url_for(ADMIN_JUEGOS))
     except SQLAlchemyError as e:
         log_db_error('eliminar_juego', e)
-        flash(f'Error al eliminar juego: {str(e)}', 'danger')
+        flash('Error al eliminar juego', 'danger')
         return redirect(url_for(ADMIN_JUEGOS))
 
 @admin_bp.route('/admin/hardware/<int:hardware_id>/eliminar', methods=['POST'])
@@ -607,5 +614,5 @@ def eliminar_hardware(hardware_id):
         return redirect(url_for(ADMIN_HARDWARE))
     except SQLAlchemyError as e:
         log_db_error('eliminar_hardware', e)
-        flash(f'Error al eliminar componente: {str(e)}', 'danger')
+        flash('Error al eliminar componente', 'danger')
         return redirect(url_for(ADMIN_HARDWARE))
