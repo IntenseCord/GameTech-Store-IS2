@@ -17,24 +17,17 @@ class Config:
         """Obtener URL de base de datos desde variables de entorno"""
         db_url = os.environ.get('DATABASE_URL')
         if not db_url:
+            if os.environ.get('FLASK_ENV') == 'production':
+                raise RuntimeError('DATABASE_URL es requerido en producción')
             instance_path = Path(__file__).parent / 'instance'
             instance_path.mkdir(exist_ok=True)
             db_file = instance_path / 'gametech_store.db'
-            db_url = f'sqlite:///{db_file}'
-        
-        # Fallback a SQLite si PostgreSQL no está disponible
-        if db_url and ('postgres' in db_url or db_url.startswith('postgresql')):
-            try:
-                import psycopg
-            except Exception:
-                try:
-                    import psycopg2
-                except Exception:
-                    print("AVISO: PostgreSQL driver no disponible. Usando SQLite local como fallback.")
-                    instance_path = Path(__file__).parent / 'instance'
-                    db_file = instance_path / 'gametech_store.db'
-                    db_url = f'sqlite:///{db_file}'
-        
+            return f'sqlite:///{db_file}'
+
+        # SQLAlchemy 2.0 ya no acepta el esquema "postgres://" (lo usan algunos proveedores).
+        if db_url.startswith('postgres://'):
+            return 'postgresql://' + db_url[len('postgres://'):]
+
         return db_url
     
     @staticmethod
