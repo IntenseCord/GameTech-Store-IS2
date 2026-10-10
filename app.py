@@ -65,7 +65,7 @@ init_sentry(app)
 
 @login_manager.user_loader
 def load_user(user_id):
-    return User.query.get(int(user_id))
+    return db.session.get(User, int(user_id))
 
 # Importar y registrar blueprints (después de init_limiter, ver comentario arriba)
 from controllers.store import store_bp

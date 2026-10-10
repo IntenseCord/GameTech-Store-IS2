@@ -23,7 +23,7 @@ invoice_bp = Blueprint('invoice', __name__)
 @login_required
 def solicitar_factura(order_id):
     """Solicitar factura para una orden"""
-    order = Order.query.get_or_404(order_id)
+    order = db.get_or_404(Order, order_id)
 
     if not _orden_pertenece_usuario(order):
         return _orden_sin_permiso()
@@ -165,7 +165,7 @@ def _traceback_log():
 @login_required
 def ver_factura(invoice_id):
     """Ver detalles de una factura"""
-    invoice = Invoice.query.get_or_404(invoice_id)
+    invoice = db.get_or_404(Invoice, invoice_id)
     
     # Verificar que la factura pertenece al usuario
     if invoice.user_id != current_user.id and not current_user.is_admin:
@@ -178,7 +178,7 @@ def ver_factura(invoice_id):
 @login_required
 def descargar_factura(invoice_id):
     """Descargar PDF de factura"""
-    invoice = Invoice.query.get_or_404(invoice_id)
+    invoice = db.get_or_404(Invoice, invoice_id)
     
     # Verificar permisos
     if invoice.user_id != current_user.id and not current_user.is_admin:
@@ -212,7 +212,7 @@ def cancelar_factura(invoice_id):
         flash('No autorizado', 'danger')
         return redirect(url_for(CART_ORDENES))
 
-    invoice = Invoice.query.get_or_404(invoice_id)
+    invoice = db.get_or_404(Invoice, invoice_id)
 
     if invoice.status == 'cancelled':
         flash('La factura ya está cancelada', 'warning')

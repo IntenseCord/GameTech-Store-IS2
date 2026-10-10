@@ -104,9 +104,9 @@ def validar_tipo_producto(product_type):
 def obtener_producto(product_type, product_id):
     """Obtiene el producto desde la base de datos según su tipo."""
     if product_type == 'game':
-        return Game.query.get(product_id)
+        return db.session.get(Game, product_id)
     elif product_type == 'hardware':
-        return Hardware.query.get(product_id)
+        return db.session.get(Hardware, product_id)
     return None
 
 def actualizar_carrito(product_type, product_id, quantity):
@@ -160,7 +160,7 @@ def responder_exito(mensaje):
 def actualizar_cantidad(item_id):
     """Actualizar cantidad de un item en el carrito"""
     try:
-        cart_item = CartItem.query.get_or_404(item_id)
+        cart_item = db.get_or_404(CartItem, item_id)
         
         # Verificar que el item pertenece al usuario
         if cart_item.user_id != current_user.id:
@@ -197,7 +197,7 @@ def actualizar_cantidad(item_id):
 def eliminar_del_carrito(item_id):
     """Eliminar un item del carrito"""
     try:
-        cart_item = CartItem.query.get_or_404(item_id)
+        cart_item = db.get_or_404(CartItem, item_id)
         
         # Verificar que el item pertenece al usuario
         if cart_item.user_id != current_user.id:
@@ -361,7 +361,7 @@ def checkout():
 def orden_confirmada(order_id):
     """Página de confirmación de orden"""
     try:
-        order = Order.query.get_or_404(order_id)
+        order = db.get_or_404(Order, order_id)
         
         # Verificar que la orden pertenece al usuario
         if order.user_id != current_user.id:

@@ -126,7 +126,7 @@ def test_webhook_pago_rechazado_restaura_stock_y_envia_correo(client, app_contex
     db.session.refresh(order)
     assert order.status == 'rejected'
 
-    hardware = Hardware.query.get(test_hardware.id)
+    hardware = db.session.get(Hardware, test_hardware.id)
     assert hardware.stock == stock_original + 2  # se restauró la cantidad de la orden
 
     assert len(enviados) == 1
@@ -196,7 +196,7 @@ def test_webhook_no_revierte_orden_ya_aprobada(client, app_context, test_user, t
     db.session.refresh(order)
     assert order.status == 'approved', 'una orden ya aprobada no debe revertirse'
 
-    hardware = Hardware.query.get(test_hardware.id)
+    hardware = db.session.get(Hardware, test_hardware.id)
     assert hardware.stock == stock_tras_venta, 'no debe restaurarse stock de una orden ya aprobada'
     assert len(enviados) == 0, 'no debe enviarse correo de rechazo para una orden ya aprobada'
 
@@ -224,7 +224,7 @@ def test_webhook_reintento_exitoso_tras_rechazo_vuelve_a_descontar_stock(client,
     db.session.refresh(order)
     assert order.status == 'approved'
 
-    hardware = Hardware.query.get(test_hardware.id)
+    hardware = db.session.get(Hardware, test_hardware.id)
     assert hardware.stock == stock_restaurado - 2, 'debe volver a descontarse el stock de la orden que ahora se aprobó'
 
 

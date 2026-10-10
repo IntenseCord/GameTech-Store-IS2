@@ -3,6 +3,7 @@ Controlador para el analizador de hardware
 Permite a los usuarios analizar su configuración y ver compatibilidad con juegos
 """
 from flask import Blueprint, render_template, request, jsonify, current_app
+from extensions import db
 from models.database_models import Hardware, Game, GameRequirements
 from utils.bottleneck_detector import BottleneckDetector
 from utils.performance_calculator import PerformanceCalculator
@@ -40,9 +41,9 @@ def analyze_hardware():
             return jsonify({'error': 'Faltan componentes'}), 400
         
         # Obtener componentes
-        cpu = Hardware.query.get(cpu_id)
-        gpu = Hardware.query.get(gpu_id)
-        ram = Hardware.query.get(ram_id)
+        cpu = db.session.get(Hardware, cpu_id)
+        gpu = db.session.get(Hardware, gpu_id)
+        ram = db.session.get(Hardware, ram_id)
         
         if not all([cpu, gpu, ram]):
             return jsonify({'error': 'Uno o más componentes no encontrados'}), 404
