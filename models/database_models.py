@@ -4,6 +4,7 @@ Modelos de base de datos usando SQLAlchemy
 from flask import current_app
 from extensions import db
 from datetime import datetime
+from decimal import Decimal
 from werkzeug.security import generate_password_hash, check_password_hash
 from sqlalchemy import or_
 import json
@@ -320,7 +321,7 @@ class CartItem(db.Model):
         product = self.get_product()
         if product:
             return product.precio * self.quantity
-        return 0.0
+        return Decimal('0')
     
     def __repr__(self):
         return f'<CartItem {self.product_type}:{self.product_id}>'
