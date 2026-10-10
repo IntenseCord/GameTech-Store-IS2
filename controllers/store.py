@@ -4,13 +4,17 @@ from models.compatibility import Compatibility
 
 store_bp = Blueprint('store', __name__)
 
+POR_PAGINA_DEFECTO = 12
+POR_PAGINA_MAXIMO = 48
+
 @store_bp.route('/tienda')
 def tienda():
     """Página principal de la tienda con paginación"""
     try:
         # Obtener parámetros de paginación
         page = request.args.get('page', 1, type=int)
-        per_page = request.args.get('per_page', 12, type=int)
+        per_page = request.args.get('per_page', POR_PAGINA_DEFECTO, type=int)
+        per_page = max(1, min(per_page, POR_PAGINA_MAXIMO))
         
         # Obtener filtros
         categoria = request.args.get('categoria', '')
@@ -24,9 +28,9 @@ def tienda():
         # Aplicar filtros
         if categoria:
             juegos_query = juegos_query.filter_by(genero=categoria)
-        if precio_min:
+        if precio_min is not None:
             juegos_query = juegos_query.filter(Game.precio >= precio_min)
-        if precio_max:
+        if precio_max is not None:
             juegos_query = juegos_query.filter(Game.precio <= precio_max)
         
         # Aplicar ordenamiento
