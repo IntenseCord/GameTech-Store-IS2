@@ -6,7 +6,7 @@ from flask_login import login_required, current_user
 from functools import wraps
 from sqlalchemy.exc import SQLAlchemyError
 from extensions import db
-from models.database_models import User, Game, Hardware, Order
+from models.database_models import User, Game, Hardware, Order, CartItem, Wishlist
 from utils.error_handling import log_db_error
 from utils.order_stock import descontar_stock, restaurar_stock
 import os
@@ -552,6 +552,12 @@ def actualizar_estado_orden(order_id):
         flash('Error al actualizar estado de la orden', 'danger')
         return redirect(url_for('admin.ver_orden', order_id=order_id))
 
+def retirar_de_carritos_y_wishlists(product_type, product_id):
+    """CartItem y Wishlist guardan product_id sin clave foránea: hay que limpiarlos
+    a mano, dentro de la misma transacción que borra el producto."""
+    CartItem.query.filter_by(product_type=product_type, product_id=product_id).delete()
+    Wishlist.query.filter_by(product_type=product_type, product_id=product_id).delete()
+
 @admin_bp.route('/admin/juego/<int:game_id>/eliminar', methods=['POST'])
 @login_required
 @admin_required
@@ -569,6 +575,7 @@ def eliminar_juego(game_id):
             except OSError:
                 pass  # Si la imagen no existe, continuamos
         
+        retirar_de_carritos_y_wishlists('game', game.id)
         db.session.delete(game)
         db.session.commit()
         flash('Juego eliminado exitosamente', 'success')
@@ -593,6 +600,7 @@ def eliminar_hardware(hardware_id):
             except OSError:
                 pass  # Si la imagen no existe, continuamos
         
+        retirar_de_carritos_y_wishlists('hardware', component.id)
         db.session.delete(component)
         db.session.commit()
         flash('Componente eliminado exitosamente', 'success')
