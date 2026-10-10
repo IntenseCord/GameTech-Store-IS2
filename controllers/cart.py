@@ -2,6 +2,8 @@
 """
 Controlador del carrito de compras
 """
+from collections.abc import Mapping
+
 from flask import Blueprint, render_template, request, redirect, url_for, flash, jsonify, current_app
 from flask_login import login_required, current_user
 from sqlalchemy.exc import SQLAlchemyError
@@ -17,19 +19,35 @@ VER_CARRITO = 'cart.ver_carrito'
 
 cart_bp = Blueprint('cart', __name__)
 
+def obtener_items_vigentes():
+    """Items del carrito del usuario cuyo producto todavía existe.
+
+    CartItem guarda product_id sin clave foránea (es juego o hardware), así que
+    borrar un producto deja items huérfanos. Se retiran y se avisa al usuario.
+    """
+    items = CartItem.query.filter_by(user_id=current_user.id).all()
+    vigentes = [item for item in items if item.get_product() is not None]
+    huerfanos = [item for item in items if item.get_product() is None]
+    if huerfanos:
+        for item in huerfanos:
+            db.session.delete(item)
+        db.session.commit()
+        flash('Quitamos de tu carrito productos que ya no están disponibles', 'warning')
+    return vigentes
+
 @cart_bp.route('/carrito')
 @login_required
 def ver_carrito():
     """Ver el carrito de compras"""
     try:
-        cart_items = CartItem.query.filter_by(user_id=current_user.id).all()
-        
+        cart_items = obtener_items_vigentes()
+
         # Calcular total
         total = sum(item.get_subtotal() for item in cart_items)
-        
+
         return render_template('cart/carrito.html', cart_items=cart_items, total=total)
-    except Exception as e:
-        current_app.logger.error(f'Error en ver_carrito: {str(e)}')
+    except SQLAlchemyError as e:
+        log_db_error('ver_carrito', e)
         flash('Error al cargar el carrito', 'danger')
         return redirect(url_for('index'))
 
@@ -39,11 +57,16 @@ def agregar_al_carrito():
     """Agregar producto al carrito"""
     # CSRF está manejado automáticamente por Flask-WTF
     # Para peticiones JSON, el token debe estar en el header X-CSRFToken
-    data = request.get_json() if request.is_json else request.form
+    data = request.get_json(silent=True) if request.is_json else request.form
+    if not isinstance(data, Mapping):
+        return responder_error('Datos inválidos', 400)
 
     product_type = data.get('product_type')
-    product_id = int(data.get('product_id'))
-    quantity = int(data.get('quantity', 1))
+    try:
+        product_id = int(data.get('product_id'))
+        quantity = int(data.get('quantity', 1))
+    except (TypeError, ValueError):
+        return responder_error('Datos inválidos: product_id y quantity deben ser números enteros', 400)
 
     # Validar tipo de producto
     error = validar_tipo_producto(product_type)
@@ -222,9 +245,14 @@ def vaciar_carrito():
 def checkout():
     """Proceso de checkout con bloqueo de filas para evitar condiciones de carrera"""
     try:
-        # Obtener items del carrito
-        cart_items = CartItem.query.filter_by(user_id=current_user.id).all()
-        
+        # En el POST no se retiran huérfanos en silencio: eso cambiaría lo que el
+        # usuario paga sin que lo vea. La validación de stock de más abajo los
+        # reporta, y el siguiente GET del carrito/checkout los limpia con aviso.
+        if request.method == 'POST':
+            cart_items = CartItem.query.filter_by(user_id=current_user.id).all()
+        else:
+            cart_items = obtener_items_vigentes()
+
         if not cart_items:
             flash('Tu carrito está vacío', 'warning')
             return redirect(url_for(VER_CARRITO))
@@ -323,8 +351,8 @@ def checkout():
         total = sum(item.get_subtotal() for item in cart_items)
         
         return render_template('cart/checkout.html', cart_items=cart_items, total=total)
-    except Exception as e:
-        current_app.logger.error(f'Error en checkout: {str(e)}')
+    except SQLAlchemyError as e:
+        log_db_error('checkout', e)
         flash('Error al procesar el checkout', 'danger')
         return redirect(url_for(VER_CARRITO))
 
@@ -341,8 +369,8 @@ def orden_confirmada(order_id):
             return redirect(url_for('index'))
         
         return render_template('cart/orden_confirmada.html', order=order)
-    except Exception as e:
-        current_app.logger.error(f'Error en orden_confirmada: {str(e)}')
+    except SQLAlchemyError as e:
+        log_db_error('orden_confirmada', e)
         flash('Error al cargar la orden', 'danger')
         return redirect(url_for('index'))
 
@@ -353,8 +381,9 @@ def mis_ordenes():
     try:
         orders = Order.query.filter_by(user_id=current_user.id).order_by(Order.created_at.desc()).all()
         return render_template('cart/mis_ordenes.html', orders=orders)
-    except Exception as e:
-        flash(f'Error al cargar órdenes: {str(e)}', 'danger')
+    except SQLAlchemyError as e:
+        log_db_error('mis_ordenes', e)
+        flash('No se pudieron cargar tus órdenes', 'danger')
         return redirect(url_for('index'))
 
 @cart_bp.route('/api/carrito/count')
