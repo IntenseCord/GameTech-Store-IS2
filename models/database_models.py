@@ -116,7 +116,7 @@ class Game(db.Model):
     @classmethod
     def get_game_by_id(cls, game_id):
         """Obtener un juego por id"""
-        return cls.query.get(game_id)
+        return db.session.get(cls, game_id)
     
     @classmethod
     def get_games_by_hardware(cls, hardware_specs):
@@ -264,7 +264,7 @@ class Hardware(db.Model):
     @classmethod
     def get_hardware_by_id(cls, hardware_id):
         """Obtener hardware por ID"""
-        return cls.query.get(hardware_id)
+        return db.session.get(cls, hardware_id)
     
     @classmethod
     def buscar_hardware(cls, query):
@@ -311,9 +311,9 @@ class CartItem(db.Model):
     def get_product(self):
         """Obtener el producto asociado"""
         if self.product_type == 'game':
-            return Game.query.get(self.product_id)
+            return db.session.get(Game, self.product_id)
         elif self.product_type == 'hardware':
-            return Hardware.query.get(self.product_id)
+            return db.session.get(Hardware, self.product_id)
         return None
     
     def get_subtotal(self):
@@ -371,9 +371,9 @@ class OrderItem(db.Model):
     def get_product(self):
         """Obtener el producto asociado (mismo patrón que CartItem.get_product)"""
         if self.product_type == 'game':
-            return Game.query.get(self.product_id)
+            return db.session.get(Game, self.product_id)
         elif self.product_type == 'hardware':
-            return Hardware.query.get(self.product_id)
+            return db.session.get(Hardware, self.product_id)
         return None
 
     def __repr__(self):

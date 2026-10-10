@@ -60,7 +60,7 @@ def mercadopago_webhook():
         return jsonify({'error': 'no se pudo verificar el pago'}), 502
 
     order_id = pago.get('external_reference')
-    order = Order.query.get(order_id) if order_id else None
+    order = db.session.get(Order, order_id) if order_id else None
     if not order:
         current_app.logger.warning(f'Webhook de MercadoPago: orden {order_id!r} no encontrada (payment {payment_id})')
         return jsonify({'success': True}), 200

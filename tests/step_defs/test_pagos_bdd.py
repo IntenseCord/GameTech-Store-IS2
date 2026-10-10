@@ -231,4 +231,4 @@ def verificar_orden_pagada_en_dashboard(response, order):
 
 def _hardware_actual(hardware_id):
     from models.database_models import Hardware
-    return Hardware.query.get(hardware_id)
+    return db.session.get(Hardware, hardware_id)

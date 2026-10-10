@@ -70,7 +70,7 @@ def usuarios():
 def toggle_admin(user_id):
     """Alternar rol de administrador"""
     try:
-        user = User.query.get_or_404(user_id)
+        user = db.get_or_404(User, user_id)
         if user == current_user:
             flash('No puedes cambiar tu propio rol de administrador', 'danger')
         else:
@@ -202,7 +202,7 @@ def nuevo_juego():
 def editar_juego(game_id):
     """Editar juego existente"""
     try:
-        game = Game.query.get_or_404(game_id)
+        game = db.get_or_404(Game, game_id)
         
         if request.method == 'POST':
             try:
@@ -406,7 +406,7 @@ def nuevo_hardware():
 def editar_hardware(hardware_id):
     """Editar componente de hardware existente"""
     try:
-        component = Hardware.query.get_or_404(hardware_id)
+        component = db.get_or_404(Hardware, hardware_id)
         
         if request.method == 'POST':
             try:
@@ -511,7 +511,7 @@ def ordenes():
 def ver_orden(order_id):
     """Ver detalles de una orden"""
     try:
-        order = Order.query.get_or_404(order_id)
+        order = db.get_or_404(Order, order_id)
         return render_template('admin/orden_detalle.html', order=order)
     except Exception as e:
         from flask import current_app
@@ -525,7 +525,7 @@ def ver_orden(order_id):
 def actualizar_estado_orden(order_id):
     """Actualizar estado de una orden"""
     try:
-        order = Order.query.get_or_404(order_id)
+        order = db.get_or_404(Order, order_id)
         nuevo_estado = request.form.get('status')
         # 'completed' es un valor heredado de antes del Incremento 1 (pagos):
         # se deja como valor válido por compatibilidad con órdenes viejas, no
@@ -558,7 +558,7 @@ def actualizar_estado_orden(order_id):
 def eliminar_juego(game_id):
     """Eliminar juego existente"""
     try:
-        game = Game.query.get_or_404(game_id)
+        game = db.get_or_404(Game, game_id)
         # game.imagen se guarda como "/static/uploads/<archivo>" (con slash
         # inicial, para usarlo directo en <img src>); compararlo contra UPLOAD
         # ("static/uploads", sin slash) nunca coincidía, así que esta limpieza
@@ -584,7 +584,7 @@ def eliminar_juego(game_id):
 def eliminar_hardware(hardware_id):
     """Eliminar componente de hardware existente"""
     try:
-        component = Hardware.query.get_or_404(hardware_id)
+        component = db.get_or_404(Hardware, hardware_id)
         # Ver comentario equivalente en eliminar_juego(): la comparación original
         # nunca coincidía por el slash inicial, la limpieza nunca se ejecutaba.
         if component.imagen and component.imagen.startswith('/' + UPLOAD):

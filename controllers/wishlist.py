@@ -3,6 +3,7 @@ Controlador de Wishlist (Lista de Deseos)
 """
 from flask import Blueprint, render_template, request, jsonify
 from flask_login import login_required, current_user
+from extensions import db
 from models.database_models import Wishlist, Game, Hardware
 
 wishlist_bp = Blueprint('wishlist', __name__, url_prefix='/wishlist')
@@ -17,7 +18,7 @@ def index():
     products = []
     for item in wishlist_items:
         if item.product_type == 'game':
-            product = Game.query.get(item.product_id)
+            product = db.session.get(Game, item.product_id)
             if product:
                 products.append({
                     'wishlist_id': item.id,
@@ -26,7 +27,7 @@ def index():
                     'added_at': item.created_at
                 })
         elif item.product_type == 'hardware':
-            product = Hardware.query.get(item.product_id)
+            product = db.session.get(Hardware, item.product_id)
             if product:
                 products.append({
                     'wishlist_id': item.id,

@@ -71,7 +71,7 @@ def test_actualizar_estado_orden_a_rechazada_restaura_stock(client, test_hardwar
 
     client.post(f'/admin/orden/{order.id}/estado', data={'status': 'rejected'})
 
-    hardware = Hardware.query.get(test_hardware.id)
+    hardware = db.session.get(Hardware, test_hardware.id)
     assert hardware.stock == stock_vendido + 1
 
 
@@ -93,7 +93,7 @@ def test_actualizar_estado_orden_a_aprobada_tras_rechazo_descuenta_stock(client,
 
     client.post(f'/admin/orden/{order.id}/estado', data={'status': 'approved'})
 
-    hardware = Hardware.query.get(test_hardware.id)
+    hardware = db.session.get(Hardware, test_hardware.id)
     assert hardware.stock == stock_restaurado - 1
 
 
@@ -112,7 +112,7 @@ def test_editar_hardware_rechaza_tipo_invalido(client):
         'marca': 'Intel', 'modelo': 'Core i5', 'precio': '100', 'stock': '1', 'especificaciones': '{}'
     })
 
-    hardware = Hardware.query.get(hw.id)
+    hardware = db.session.get(Hardware, hw.id)
     assert hardware.tipo == 'CPU', 'editar_hardware aceptó un tipo fuera de tipos_validos'
 
 
@@ -128,7 +128,7 @@ def test_editar_hardware_rechaza_precio_negativo(client):
         'precio': '-50', 'stock': '1', 'especificaciones': '{}'
     })
 
-    hardware = Hardware.query.get(hw.id)
+    hardware = db.session.get(Hardware, hw.id)
     assert hardware.precio == 100, 'editar_hardware aceptó un precio negativo'
 
 
@@ -147,7 +147,7 @@ def test_editar_juego_rechaza_stock_negativo(client):
         'requisitos_minimos': '', 'requisitos_recomendados': ''
     })
 
-    actualizado = Game.query.get(game.id)
+    actualizado = db.session.get(Game, game.id)
     assert actualizado.stock == 5, 'editar_juego aceptó un stock negativo'
 
 

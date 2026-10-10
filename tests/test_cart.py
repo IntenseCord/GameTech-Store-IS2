@@ -111,7 +111,7 @@ def test_checkout_producto_eliminado_muestra_error_no_crashea(client, test_user,
         'product_type': 'hardware', 'product_id': test_hardware.id, 'quantity': 1
     })
 
-    db.session.delete(Hardware.query.get(test_hardware.id))
+    db.session.delete(db.session.get(Hardware, test_hardware.id))
     db.session.commit()
 
     response = client.post('/carrito/checkout', follow_redirects=True)
@@ -204,5 +204,5 @@ def test_checkout_revierte_orden_y_stock_si_falla_mercadopago(client, test_user,
     assert Order.query.filter_by(user_id=test_user.id).count() == 0
     assert CartItem.query.filter_by(user_id=test_user.id).count() == 1
 
-    hardware = Hardware.query.get(test_hardware.id)
+    hardware = db.session.get(Hardware, test_hardware.id)
     assert hardware.stock == stock_original
