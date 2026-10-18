@@ -177,10 +177,10 @@ function displayBottlenecks(bottlenecks) {
     const container = document.getElementById('bottlenecks-container');
     
     if (!bottlenecks.has_bottleneck) {
+        // La descripción del servidor ya trae su propio título (con emoji): no se repite aquí.
         container.innerHTML = `
             <div class="alert alert-success mb-0">
-                <h5><i class="fas fa-check-circle me-2"></i>¡Sistema Balanceado!</h5>
-                <p class="mb-0">${bottlenecks.description}</p>
+                <div class="bottleneck-description"><p class="mb-0">${formatMarkdown(bottlenecks.description)}</p></div>
             </div>
         `;
         return;
@@ -205,7 +205,7 @@ function displayBottlenecks(bottlenecks) {
                 Cuello de Botella Detectado
                 ${bottlenecks.percentage_loss > 0 ? `<span class="badge bg-${severityClass} ms-2">-${bottlenecks.percentage_loss}% rendimiento</span>` : ''}
             </h5>
-            <div class="bottleneck-description">${formatMarkdown(bottlenecks.description)}</div>
+            <div class="bottleneck-description"><p>${formatMarkdown(bottlenecks.description)}</p></div>
     `;
     
     if (bottlenecks.recommendations && bottlenecks.recommendations.length > 0) {
@@ -213,7 +213,7 @@ function displayBottlenecks(bottlenecks) {
             <hr>
             <h6><i class="fas fa-tools me-2"></i>Recomendaciones:</h6>
             <ul class="mb-0">
-                ${bottlenecks.recommendations.map(rec => `<li>${rec}</li>`).join('')}
+                ${bottlenecks.recommendations.map(rec => `<li>${escapeHtml(rec)}</li>`).join('')}
             </ul>
         `;
     }
@@ -240,7 +240,7 @@ function displayRecommendations(recommendations) {
         <ul class="list-group list-group-flush">
             ${recommendations.map(rec => `
                 <li class="list-group-item">
-                    <i class="fas fa-arrow-right text-info me-2"></i>${rec}
+                    <i class="fas fa-arrow-right text-info me-2"></i>${escapeHtml(rec)}
                 </li>
             `).join('')}
         </ul>
@@ -354,11 +354,12 @@ function getQualityLabel(quality) {
 }
 
 function formatMarkdown(text) {
-    // Convertir markdown simple a HTML
-    return text
+    // Primero se escapa el HTML (el texto llega del servidor y se inserta con innerHTML);
+    // replaceAll con una RegExp exige el flag `g`, sin él lanza TypeError.
+    return escapeHtml(text)
         .replaceAll(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
-        .replaceAll(/\n\n/, '</p><p>')
-        .replaceAll(/\n/, '<br>');
+        .replaceAll(/\n\n/g, '</p><p>')
+        .replaceAll(/\n/g, '<br>');
 }
 
 function showLoading(show) {
