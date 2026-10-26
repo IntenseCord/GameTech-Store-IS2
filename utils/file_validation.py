@@ -1,11 +1,13 @@
 """
 Utilidades para validación segura de archivos subidos
 """
+import logging
 import os
 import uuid
 from werkzeug.utils import secure_filename
 from PIL import Image
 
+logger = logging.getLogger(__name__)
 
 ALLOWED_EXTENSIONS = {'jpg', 'jpeg', 'png', 'webp'}
 ALLOWED_MIME_TYPES = {'image/jpeg', 'image/png', 'image/webp'}
@@ -56,8 +58,10 @@ def validate_file_upload(file):
         if format_detected not in ['jpeg', 'png', 'webp']:
             return False, 'Formato de imagen no válido'
             
-    except Exception as e:
-        return False, f'Archivo de imagen inválido: {str(e)}'
+    except Exception:
+        # Pillow describe el fallo con detalles internos (objetos, rutas): no se muestran al usuario
+        logger.warning('Imagen subida rechazada por Pillow', exc_info=True)
+        return False, 'Archivo de imagen inválido'
     
     return True, None
 

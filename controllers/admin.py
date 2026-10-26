@@ -21,6 +21,32 @@ def url_publica_de_imagen(filename):
     """URL guardada en la base de datos: siempre con '/', sin el separador del sistema."""
     return f'/{UPLOAD}/{filename}'
 
+def borrar_imagen_subida(url):
+    """Borra del disco una imagen subida por este panel; ignora URLs externas y cualquier otra ruta."""
+    if not url or url != url_publica_de_imagen(os.path.basename(url)):
+        return
+    try:
+        os.remove(os.path.join(UPLOAD, os.path.basename(url)))
+    except FileNotFoundError:
+        pass
+    except OSError as e:
+        log_db_error('borrar_imagen_subida', e)
+
+
+def commit_con_imagen(imagen_subida=None, imagen_reemplazada=None):
+    """Confirma la transacción sin dejar archivos huérfanos en disco.
+
+    Si el commit falla se descarta la imagen recién subida; si tiene éxito se borra la que fue reemplazada.
+    """
+    try:
+        db.session.commit()
+    except SQLAlchemyError:
+        db.session.rollback()
+        borrar_imagen_subida(imagen_subida)
+        raise
+    borrar_imagen_subida(imagen_reemplazada)
+
+
 admin_bp = Blueprint('admin', __name__)
 
 def admin_required(f):
@@ -145,7 +171,7 @@ def nuevo_juego():
                     return render_template('admin/juego_form.html')
                 
                 # Procesar imagen - archivo o URL
-                imagen_path = None
+                imagen_path = imagen_subida = None
                 imagen = request.files.get('imagen')
                 imagen_url = request.form.get('imagen_url', '').strip()
                 
@@ -160,7 +186,7 @@ def nuevo_juego():
                     # Generar nombre único y guardar
                     filename = generate_unique_filename(imagen.filename)
                     imagen.save(os.path.join(UPLOAD, filename))
-                    imagen_path = url_publica_de_imagen(filename)
+                    imagen_path = imagen_subida = url_publica_de_imagen(filename)
                 elif imagen_url:
                     # Validar URL de manera segura
                     from utils.file_validation import validate_image_url
@@ -184,7 +210,7 @@ def nuevo_juego():
                     imagen=imagen_path
                 )
                 db.session.add(juego)
-                db.session.commit()
+                commit_con_imagen(imagen_subida)
                 flash('Juego creado exitosamente', 'success')
                 return redirect(url_for(ADMIN_JUEGOS))
             except SQLAlchemyError as e:
@@ -245,6 +271,7 @@ def editar_juego(game_id):
                     return render_template('admin/juego_form.html', game=game)
 
                 # Actualizar imagen si se proporciona una nueva - archivo o URL
+                imagen_subida = imagen_reemplazada = None
                 imagen = request.files.get('imagen')
                 imagen_url = request.form.get('imagen_url', '').strip()
 
@@ -259,7 +286,8 @@ def editar_juego(game_id):
                     # Generar nombre único y guardar
                     filename = generate_unique_filename(imagen.filename)
                     imagen.save(os.path.join(UPLOAD, filename))
-                    game.imagen = url_publica_de_imagen(filename)
+                    imagen_reemplazada, imagen_subida = game.imagen, url_publica_de_imagen(filename)
+                    game.imagen = imagen_subida
                 elif imagen_url:
                     # Validar URL de manera segura
                     from utils.file_validation import validate_image_url
@@ -267,6 +295,7 @@ def editar_juego(game_id):
                     if not is_valid:
                         flash(f'Error en URL de imagen: {error_msg}', 'danger')
                         return render_template('admin/juego_form.html', game=game)
+                    imagen_reemplazada = game.imagen
                     game.imagen = imagen_url
 
                 # Actualizar datos
@@ -280,7 +309,7 @@ def editar_juego(game_id):
                 game.requisitos_recomendados = request.form.get('requisitos_recomendados', '')
                 game.stock = stock
 
-                db.session.commit()
+                commit_con_imagen(imagen_subida, imagen_reemplazada)
                 flash('Juego actualizado exitosamente', 'success')
                 return redirect(url_for(ADMIN_JUEGOS))
             except SQLAlchemyError as e:
@@ -354,7 +383,7 @@ def nuevo_hardware():
                     return render_template('admin/hardware_form.html')
                 
                 # Procesar imagen - archivo o URL
-                imagen_path = None
+                imagen_path = imagen_subida = None
                 imagen = request.files.get('imagen')
                 imagen_url = request.form.get('imagen_url', '').strip()
                 
@@ -369,7 +398,7 @@ def nuevo_hardware():
                     # Generar nombre único y guardar
                     filename = generate_unique_filename(imagen.filename)
                     imagen.save(os.path.join(UPLOAD, filename))
-                    imagen_path = url_publica_de_imagen(filename)
+                    imagen_path = imagen_subida = url_publica_de_imagen(filename)
                 elif imagen_url:
                     # Validar URL de manera segura
                     from utils.file_validation import validate_image_url
@@ -391,7 +420,7 @@ def nuevo_hardware():
                     imagen=imagen_path
                 )
                 db.session.add(componente)
-                db.session.commit()
+                commit_con_imagen(imagen_subida)
                 flash('Componente creado exitosamente', 'success')
                 return redirect(url_for(ADMIN_HARDWARE))
             except SQLAlchemyError as e:
@@ -451,6 +480,7 @@ def editar_hardware(hardware_id):
                     return render_template('admin/hardware_form.html', hardware=component)
 
                 # Actualizar imagen si se proporciona una nueva - archivo o URL
+                imagen_subida = imagen_reemplazada = None
                 imagen = request.files.get('imagen')
                 imagen_url = request.form.get('imagen_url', '').strip()
 
@@ -465,7 +495,8 @@ def editar_hardware(hardware_id):
                     # Generar nombre único y guardar
                     filename = generate_unique_filename(imagen.filename)
                     imagen.save(os.path.join(UPLOAD, filename))
-                    component.imagen = url_publica_de_imagen(filename)
+                    imagen_reemplazada, imagen_subida = component.imagen, url_publica_de_imagen(filename)
+                    component.imagen = imagen_subida
                 elif imagen_url:
                     # Validar URL de manera segura
                     from utils.file_validation import validate_image_url
@@ -473,6 +504,7 @@ def editar_hardware(hardware_id):
                     if not is_valid:
                         flash(f'Error en URL de imagen: {error_msg}', 'danger')
                         return render_template('admin/hardware_form.html', hardware=component)
+                    imagen_reemplazada = component.imagen
                     component.imagen = imagen_url
 
                 # Actualizar datos
@@ -484,7 +516,7 @@ def editar_hardware(hardware_id):
                 component.especificaciones = especificaciones
                 component.stock = stock
 
-                db.session.commit()
+                commit_con_imagen(imagen_subida, imagen_reemplazada)
                 flash('Componente actualizado exitosamente', 'success')
                 return redirect(url_for(ADMIN_HARDWARE))
             except SQLAlchemyError as e:
