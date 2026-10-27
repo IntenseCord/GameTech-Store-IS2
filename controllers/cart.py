@@ -8,7 +8,7 @@ from flask import Blueprint, render_template, request, redirect, url_for, flash,
 from flask_login import login_required, current_user
 from sqlalchemy.exc import SQLAlchemyError
 from extensions import db
-from models.database_models import CartItem, Game, Hardware, Order, OrderItem
+from models.database_models import CartItem, Game, Hardware, Invoice, Order, OrderItem
 from utils.email_service import send_order_pending_email
 from utils.error_handling import log_db_error
 from utils.mercadopago_service import crear_preferencia_pago, MercadoPagoError
@@ -380,7 +380,11 @@ def mis_ordenes():
     """Ver historial de órdenes del usuario"""
     try:
         orders = Order.query.filter_by(user_id=current_user.id).order_by(Order.created_at.desc()).all()
-        return render_template('cart/mis_ordenes.html', orders=orders)
+        facturas_por_orden = {}
+        if orders:
+            facturas = Invoice.query.filter(Invoice.order_id.in_([o.id for o in orders])).all()
+            facturas_por_orden = {f.order_id: f.id for f in facturas}
+        return render_template('cart/mis_ordenes.html', orders=orders, facturas_por_orden=facturas_por_orden)
     except SQLAlchemyError as e:
         log_db_error('mis_ordenes', e)
         flash('No se pudieron cargar tus órdenes', 'danger')

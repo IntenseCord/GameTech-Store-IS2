@@ -66,9 +66,15 @@
                                     <i class="fas fa-eye me-1"></i>Ver Detalles
                                 </a>
                                 {% if order.status in ('completed', 'approved') %}
+                                    {% if order.id in facturas_por_orden %}
+                                    <a href="{{ url_for('invoice.ver_factura', invoice_id=facturas_por_orden[order.id]) }}" class="btn btn-sm btn-success">
+                                        <i class="fas fa-file-invoice me-1"></i>Ver Factura
+                                    </a>
+                                    {% else %}
                                     <a href="{{ url_for('invoice.solicitar_factura', order_id=order.id) }}" class="btn btn-sm btn-warning">
                                         <i class="fas fa-file-invoice me-1"></i>Solicitar Factura
                                     </a>
+                                    {% endif %}
                                 {% endif %}
                             </div>
                         </div>
