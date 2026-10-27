@@ -3,7 +3,7 @@ Modelos de base de datos usando SQLAlchemy
 """
 from flask import current_app
 from extensions import db
-from datetime import datetime
+from utils.fechas import ahora_utc
 from decimal import Decimal
 from werkzeug.security import generate_password_hash, check_password_hash
 from sqlalchemy import or_
@@ -20,7 +20,7 @@ class User(db.Model):
     username = db.Column(db.String(80), unique=True, nullable=False, index=True)
     email = db.Column(db.String(120), unique=True, nullable=False, index=True)
     password_hash = db.Column(db.String(255), nullable=False)
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    created_at = db.Column(db.DateTime, default=ahora_utc)
     is_active = db.Column(db.Boolean, default=True)
     is_admin = db.Column(db.Boolean, default=False)
     reset_token = db.Column(db.String(100), unique=True, nullable=True)
@@ -87,8 +87,8 @@ class Game(db.Model):
     requisitos_minimos = db.Column(db.Text)  # JSON string
     requisitos_recomendados = db.Column(db.Text)  # JSON string
     stock = db.Column(db.Integer, default=0)
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
-    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    created_at = db.Column(db.DateTime, default=ahora_utc)
+    updated_at = db.Column(db.DateTime, default=ahora_utc, onupdate=ahora_utc)
     
     def get_requisitos_minimos(self):
         """Obtener requisitos mínimos como dict"""
@@ -214,8 +214,8 @@ class Hardware(db.Model):
     generation = db.Column(db.String(50))
     architecture = db.Column(db.String(100))
     
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
-    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    created_at = db.Column(db.DateTime, default=ahora_utc)
+    updated_at = db.Column(db.DateTime, default=ahora_utc, onupdate=ahora_utc)
     
     def get_especificaciones(self):
         """Obtener especificaciones como dict"""
@@ -306,7 +306,7 @@ class CartItem(db.Model):
     product_type = db.Column(db.String(20), nullable=False)  # 'game' o 'hardware'
     product_id = db.Column(db.Integer, nullable=False)
     quantity = db.Column(db.Integer, default=1)
-    added_at = db.Column(db.DateTime, default=datetime.utcnow)
+    added_at = db.Column(db.DateTime, default=ahora_utc)
     
     def get_product(self):
         """Obtener el producto asociado"""
@@ -342,8 +342,8 @@ class Order(db.Model):
     # informa el webhook de MercadoPago del Incremento 2, no se conoce al
     # crear la preferencia.
     payment_method = db.Column(db.String(50), nullable=True)
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
-    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    created_at = db.Column(db.DateTime, default=ahora_utc)
+    updated_at = db.Column(db.DateTime, default=ahora_utc, onupdate=ahora_utc)
 
     # Relaciones
     items = db.relationship('OrderItem', backref='order', lazy='dynamic', cascade=CASCADE)
@@ -410,8 +410,8 @@ class GameRequirements(db.Model):
     directx_version = db.Column(db.String(10), default='DX12')
     requires_ssd = db.Column(db.Boolean, default=False)
     
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
-    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    created_at = db.Column(db.DateTime, default=ahora_utc)
+    updated_at = db.Column(db.DateTime, default=ahora_utc, onupdate=ahora_utc)
     
     # Relación con Game
     game = db.relationship('Game', backref=db.backref('requirements', uselist=False))
@@ -500,8 +500,8 @@ class Invoice(db.Model):
     
     # Estado y fechas
     status = db.Column(db.String(20), default='active')  # active, cancelled
-    fecha_emision = db.Column(db.DateTime, default=datetime.utcnow)
-    fecha_validacion_dian = db.Column(db.DateTime, default=datetime.utcnow)
+    fecha_emision = db.Column(db.DateTime, default=ahora_utc)
+    fecha_validacion_dian = db.Column(db.DateTime, default=ahora_utc)
     fecha_cancelacion = db.Column(db.DateTime, nullable=True)
     
     # Archivos
@@ -512,8 +512,8 @@ class Invoice(db.Model):
     cufe = db.Column(db.Text)  # Código Único de Factura Electrónica
     qr_code = db.Column(db.Text)  # Código QR para validación DIAN
     
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
-    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    created_at = db.Column(db.DateTime, default=ahora_utc)
+    updated_at = db.Column(db.DateTime, default=ahora_utc, onupdate=ahora_utc)
     
     # Relación con Order
     order = db.relationship('Order', backref=db.backref('invoice', uselist=False))
@@ -612,7 +612,7 @@ class Wishlist(db.Model):
     user_id = db.Column(db.Integer, db.ForeignKey(USERS_ID), nullable=False)
     product_id = db.Column(db.Integer, nullable=False)
     product_type = db.Column(db.String(20), nullable=False)  # 'game' or 'hardware'
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    created_at = db.Column(db.DateTime, default=ahora_utc)
     
     def to_dict(self):
         """Convertir a diccionario"""

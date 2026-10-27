@@ -89,13 +89,14 @@ class Query:
 def extensiones_de_seguridad(produccion):
     """En producción se desactiva además la introspección: es lo que permite a
     un tercero listar todo el esquema (el explorador solo se usa en desarrollo)."""
+    # Strawberry pide clases o fábricas (no instancias) para construir una extensión nueva por petición
     extensiones = [
-        QueryDepthLimiter(max_depth=PROFUNDIDAD_MAXIMA),
-        MaxAliasesLimiter(max_alias_count=ALIAS_MAXIMOS),
-        MaxTokensLimiter(max_token_count=TOKENS_MAXIMOS),
+        lambda: QueryDepthLimiter(max_depth=PROFUNDIDAD_MAXIMA),
+        lambda: MaxAliasesLimiter(max_alias_count=ALIAS_MAXIMOS),
+        lambda: MaxTokensLimiter(max_token_count=TOKENS_MAXIMOS),
     ]
     if produccion:
-        extensiones.append(DisableIntrospection())
+        extensiones.append(DisableIntrospection)
     return extensiones
 
 
