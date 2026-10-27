@@ -5,11 +5,11 @@ Textos y botones de las plantillas del flujo de compra.
   real se hace en MercadoPago.
 - mis_ordenes.html seguía ofreciendo "Solicitar Factura" después de facturar.
 """
-from datetime import datetime
 from decimal import Decimal
 
 from extensions import db
 from models.database_models import CartItem, Invoice, Order, OrderItem
+from utils.fechas import ahora_utc
 
 
 def login(client, username='testuser', password='Test1234'):
@@ -31,7 +31,7 @@ def _factura(user, orden):
         uuid=f'uuid-{orden.id}', folio=f'FE-{orden.id:06d}', user_id=user.id, order_id=orden.id,
         nit_receptor='1234567890', razon_social_receptor='Cliente Prueba',
         subtotal=Decimal('50.41'), iva=Decimal('9.58'), total=Decimal('59.99'),
-        fecha_emision=datetime.utcnow(),
+        fecha_emision=ahora_utc(),
     )
     db.session.add(factura)
     db.session.commit()
