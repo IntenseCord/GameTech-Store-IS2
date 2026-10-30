@@ -10,6 +10,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from app import app, db
 from models.database_models import Hardware
+from utils.benchmark_escala import PUNTAJE_RX_7600
 
 # Datos de benchmark reales (aproximados basados en PassMark y 3DMark)
 BENCHMARK_DATA = {
@@ -53,6 +54,8 @@ BENCHMARK_DATA = {
         'RX 7900 XT': {'score': 19000, 'vram': 20, 'tdp': 300},
         'RX 7800 XT': {'score': 16000, 'vram': 16, 'tdp': 263},
         'RX 7700 XT': {'score': 14000, 'vram': 12, 'tdp': 245},
+        # un ~5 % por debajo de la RTX 4060 según reseñas a 1080p (ver utils/benchmark_escala.py)
+        'RX 7600': {'score': PUNTAJE_RX_7600, 'vram': 8, 'tdp': 165},
         'RX 6800 XT': {'score': 16000, 'vram': 16, 'tdp': 300},
         'RX 6700 XT': {'score': 12000, 'vram': 12, 'tdp': 230},
         'RX 6600 XT': {'score': 9000, 'vram': 8, 'tdp': 160},
