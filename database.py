@@ -5,29 +5,10 @@ from datetime import datetime
 from extensions import db
 
 
-def seed_database():
-    """Poblar la base de datos con datos iniciales"""
-    from models.database_models import Game, Hardware, User
-    from werkzeug.security import generate_password_hash
-    from os import environ
-    # Crear usuario admin por defecto si no existe
-    admin_user = User.query.filter_by(username='admin').first()
-    if not admin_user:
-        admin_password = environ.get('ADMIN_PASSWORD')
-        if not admin_password:
-            raise ValueError('ADMIN_PASSWORD environment variable is not set')
-            
-        admin = User(
-            username='admin',
-            email='admin@gametechstore.com',
-            password_hash=generate_password_hash(admin_password),
-            is_admin=True,  # Aseguramos que el usuario admin tenga permisos de administrador
-            email_verified=True  # Cuenta de sistema creada por el propio backend, no requiere verificación
-        )
-        db.session.add(admin)
-    
-    # Agregar juegos
-    juegos = [
+def juegos_iniciales():
+    """Juegos del catálogo (objetos sin agregar a la sesión)."""
+    from models.database_models import Game
+    return [
         Game(
             nombre="Cyberpunk 2077",
             descripcion="Un RPG de mundo abierto en Night City donde asumes el rol de V, un mercenario en busca de un implante único que es la clave de la inmortalidad.",
@@ -87,8 +68,82 @@ def seed_database():
             requisitos_minimos='{"CPU": "Intel Core i5-8400", "RAM": "12 GB", "GPU": "NVIDIA GeForce GTX 1060", "Almacenamiento": "60 GB"}',
             requisitos_recomendados='{"CPU": "Intel Core i7-8700K", "RAM": "16 GB", "GPU": "NVIDIA GeForce GTX 1070", "Almacenamiento": "60 GB"}',
             stock=60
+        ),
+        Game(
+            nombre="Red Dead Redemption 2",
+            descripcion="Épica del Viejo Oeste de Rockstar: sigue a Arthur Morgan y a la banda de Van der Linde en su huida por un mundo abierto lleno de vida.",
+            precio=59.99,
+            imagen="https://via.placeholder.com/400x300/8b0000/ffffff?text=Red+Dead+Redemption+2",
+            genero="Acción",
+            desarrollador="Rockstar Games",
+            fecha_lanzamiento=datetime(2019, 12, 5),
+            requisitos_minimos='{"CPU": "Intel Core i5-2500K", "RAM": "8 GB", "GPU": "NVIDIA GeForce GTX 770 2GB", "Almacenamiento": "150 GB"}',
+            requisitos_recomendados='{"CPU": "Intel Core i7-4770K", "RAM": "12 GB", "GPU": "NVIDIA GeForce GTX 1060 6GB", "Almacenamiento": "150 GB"}',
+            stock=80
+        ),
+        Game(
+            nombre="Baldur's Gate 3",
+            descripcion="RPG por turnos de Larian Studios basado en Dungeons & Dragons: reúne a tu grupo, toma decisiones con consecuencias y enfrenta al Azotamentes.",
+            precio=59.99,
+            imagen="https://via.placeholder.com/400x300/4b0082/ffffff?text=Baldur%27s+Gate+3",
+            genero="RPG",
+            desarrollador="Larian Studios",
+            fecha_lanzamiento=datetime(2023, 8, 3),
+            requisitos_minimos='{"CPU": "Intel Core i5-4690", "RAM": "8 GB", "GPU": "NVIDIA GeForce GTX 970", "Almacenamiento": "150 GB (SSD)"}',
+            requisitos_recomendados='{"CPU": "AMD Ryzen 5 3600", "RAM": "16 GB", "GPU": "NVIDIA GeForce RTX 2060 Super", "Almacenamiento": "150 GB (SSD)"}',
+            stock=70
+        ),
+        Game(
+            nombre="Apex Legends",
+            descripcion="Battle royale de héroes gratuito de Respawn: elige una leyenda con habilidades únicas y compite en escuadras de tres.",
+            precio=0.00,
+            imagen="https://via.placeholder.com/400x300/c0392b/ffffff?text=Apex+Legends",
+            genero="FPS",
+            desarrollador="Respawn",
+            fecha_lanzamiento=datetime(2020, 11, 4),
+            requisitos_minimos='{"CPU": "Intel Core i3-6300", "RAM": "6 GB", "GPU": "NVIDIA GeForce GTX 950", "Almacenamiento": "75 GB"}',
+            requisitos_recomendados='{"CPU": "AMD Ryzen 5 3600", "RAM": "8 GB", "GPU": "NVIDIA GeForce GTX 970", "Almacenamiento": "75 GB"}',
+            stock=999
         )
     ]
+
+
+def agregar_juegos_faltantes():
+    """Agrega los juegos del catálogo que no existan (por nombre) y devuelve sus nombres.
+
+    `seed_database` solo corre con la base vacía; esta función completa una base ya sembrada y no duplica si se repite.
+    """
+    from models.database_models import Game
+    existentes = {nombre for (nombre,) in db.session.query(Game.nombre).all()}
+    faltantes = [j for j in juegos_iniciales() if j.nombre not in existentes]
+    db.session.add_all(faltantes)
+    db.session.commit()
+    return [j.nombre for j in faltantes]
+
+
+def seed_database():
+    """Poblar la base de datos con datos iniciales"""
+    from models.database_models import Game, Hardware, User
+    from werkzeug.security import generate_password_hash
+    from os import environ
+    # Crear usuario admin por defecto si no existe
+    admin_user = User.query.filter_by(username='admin').first()
+    if not admin_user:
+        admin_password = environ.get('ADMIN_PASSWORD')
+        if not admin_password:
+            raise ValueError('ADMIN_PASSWORD environment variable is not set')
+            
+        admin = User(
+            username='admin',
+            email='admin@gametechstore.com',
+            password_hash=generate_password_hash(admin_password),
+            is_admin=True,  # Aseguramos que el usuario admin tenga permisos de administrador
+            email_verified=True  # Cuenta de sistema creada por el propio backend, no requiere verificación
+        )
+        db.session.add(admin)
+    
+    # Agregar juegos
+    juegos = juegos_iniciales()
     
     for juego in juegos:
         db.session.add(juego)

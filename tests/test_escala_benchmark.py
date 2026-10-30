@@ -62,8 +62,8 @@ def test_la_rx_7600_queda_un_poco_por_debajo_de_la_rtx_4060():
 NOMBRES = {'Cyberpunk 2077', 'Elden Ring', 'The Witcher 3', 'Grand Theft Auto V', 'Counter-Strike 2'}
 
 
-def test_los_requisitos_cubren_los_cinco_juegos_del_catalogo():
-    assert {g['game_name'] for g in GAME_REQUIREMENTS_DATA} == NOMBRES
+def test_los_requisitos_cubren_los_cinco_juegos_originales_del_catalogo():
+    assert NOMBRES <= {g['game_name'] for g in GAME_REQUIREMENTS_DATA}
 
 
 @pytest.mark.parametrize('juego', sorted(NOMBRES))
