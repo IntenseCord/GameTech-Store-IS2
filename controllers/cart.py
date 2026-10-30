@@ -6,7 +6,7 @@ from collections.abc import Mapping
 
 from flask import Blueprint, render_template, request, redirect, url_for, flash, jsonify, current_app
 from flask_login import login_required, current_user
-from sqlalchemy.exc import SQLAlchemyError
+from sqlalchemy.exc import IntegrityError, SQLAlchemyError
 from extensions import db
 from models.database_models import CartItem, Game, Hardware, Invoice, Order, OrderItem
 from utils.email_service import send_order_pending_email
@@ -84,8 +84,15 @@ def agregar_al_carrito():
 
     # Agregar o actualizar carrito
     try:
-        message = actualizar_carrito(product_type, product_id, quantity)
-        db.session.commit()
+        try:
+            message = actualizar_carrito(product_type, product_id, quantity)
+            db.session.commit()
+        except IntegrityError:
+            # Otra petición del mismo usuario insertó esa fila un instante antes y la restricción
+            # única hizo fallar este INSERT: se reintenta una vez, ahora la fila ya existe y se suma.
+            db.session.rollback()
+            message = actualizar_carrito(product_type, product_id, quantity)
+            db.session.commit()
         return responder_exito(message)
     except ValueError as e:
         # Errores de validación de negocio (stock insuficiente, cantidad inválida), no de BD

@@ -300,6 +300,11 @@ class Hardware(db.Model):
 class CartItem(db.Model):
     """Modelo de item en el carrito"""
     __tablename__ = 'cart_items'
+    # Una sola fila por usuario y producto: la cantidad se suma en esa fila. Sin esto, dos peticiones
+    # simultáneas pasaban la comprobación "¿ya existe?" y se insertaban dos filas iguales (hallazgo 30).
+    __table_args__ = (
+        db.UniqueConstraint('user_id', 'product_type', 'product_id', name='uq_cart_items_usuario_producto'),
+    )
     
     id = db.Column(db.Integer, primary_key=True)
     user_id = db.Column(db.Integer, db.ForeignKey(USERS_ID), nullable=False)

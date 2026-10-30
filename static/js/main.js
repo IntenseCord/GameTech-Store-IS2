@@ -88,8 +88,9 @@ function initializeHomePage() {
 function initializeStorePage() {
     // Los filtros ya están manejados en el template store.html
 
-    // Inicializar carrito de compras (simulado)
-    initializeShoppingCart();
+    // El carrito NO se inicializa aquí: initializeCommonFeatures() ya lo hace en todas las
+    // páginas. Registrarlo otra vez ponía dos manejadores de clic en `document` y cada clic en
+    // "Agregar" mandaba dos peticiones (hallazgo 30).
 
     // Inicializar comparación de productos
     initializeProductComparison();
