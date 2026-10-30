@@ -13,7 +13,7 @@ from models.database_models import Order
 from utils.email_service import send_order_confirmation_email, send_order_rejected_email
 from utils.error_handling import log_db_error
 from utils.mercadopago_service import MercadoPagoError, obtener_pago
-from utils.order_stock import descontar_stock, restaurar_stock
+from utils.order_stock import cambiar_estado_orden
 
 # Mapea los estados reales de un pago de MercadoPago al estado de Order.
 # cancelled/refunded/charged_back se tratan como 'rejected': en los tres
@@ -73,26 +73,23 @@ def mercadopago_webhook():
     if order.status == nuevo_estado:
         return jsonify({'success': True}), 200
 
-    # 'approved' es un estado terminal: una notificación tardía o de un
-    # intento de pago distinto (external_reference compartido) no debe
-    # poder revertir una orden que ya se cobró -- si no, se le devolvería
-    # al inventario stock que en realidad sigue vendido.
-    if order.status == 'approved':
+    # Solo una orden `pending` puede cambiar por una notificación. approved,
+    # rejected y cancelled son estados finales: una notificación tardía o de un
+    # intento de pago distinto (external_reference compartido) no puede revertir
+    # una orden cobrada (se devolvería stock que sigue vendido) ni reactivar una
+    # rechazada (su stock ya se devolvió; el usuario debe crear otra orden).
+    if order.status != 'pending':
         current_app.logger.info(
-            f'Webhook de MercadoPago: orden {order.id} ya está approved, '
+            f'Webhook de MercadoPago: orden {order.id} ya está {order.status}, '
             f'se ignora notificación de {payment_id} (estado {nuevo_estado})'
         )
         return jsonify({'success': True}), 200
 
     try:
-        if nuevo_estado == 'rejected':
-            restaurar_stock(order)
-        elif nuevo_estado == 'approved' and order.status == 'rejected':
-            # Reintento de pago exitoso tras un rechazo previo: el stock se
-            # había restaurado, hay que volver a descontarlo.
-            descontar_stock(order)
-
-        order.status = nuevo_estado
+        if not cambiar_estado_orden(order, nuevo_estado):
+            # Otra copia de la misma notificación cambió la orden un instante antes:
+            # ya se devolvió el stock y se envió el correo, no repetirlos.
+            return jsonify({'success': True}), 200
         order.payment_id = str(payment_id)
         order.payment_method = pago.get('payment_method_id') or order.payment_method
         db.session.commit()

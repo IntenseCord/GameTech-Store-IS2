@@ -13,9 +13,8 @@ Regresión (revisión de código 2026-09-15):
   pago distinto para la misma orden podía revertir una orden ya 'approved'
   de vuelta a 'rejected' y restaurar stock que en realidad seguía vendido.
   Fix: 'approved' es ahora un estado terminal (controllers/webhooks.py).
-- `test_webhook_reintento_exitoso_tras_rechazo_vuelve_a_descontar_stock` --
-  faltante, no bug: una orden rechazada que se aprueba en un reintento
-  posterior no volvía a descontar el stock que se había restaurado.
+- (reemplazado 2026-10-27) un reintento aprobado tras un rechazo ya no reactiva la orden:
+  `rejected` es un estado final (ver tests/test_orden_estados.py).
 - `test_webhook_usa_payment_id_de_query_string_no_del_body` -- la firma
   x-signature solo cubre el data.id de la query string, pero el
   payment_id procesado priorizaba el del body -- un body modificado podía
@@ -201,9 +200,12 @@ def test_webhook_no_revierte_orden_ya_aprobada(client, app_context, test_user, t
     assert len(enviados) == 0, 'no debe enviarse correo de rechazo para una orden ya aprobada'
 
 
-def test_webhook_reintento_exitoso_tras_rechazo_vuelve_a_descontar_stock(client, app_context, test_user, test_hardware, monkeypatch):
-    """Si una orden rechazada (con su stock ya restaurado) se aprueba en un
-    reintento de pago posterior, el stock debe volver a descontarse."""
+def test_webhook_pago_aprobado_sobre_orden_rechazada_no_la_reactiva(client, app_context, test_user, test_hardware, monkeypatch, caplog):
+    """`rejected` es un estado final (decisión del usuario, 2026-10-27): su stock ya se devolvió y, si el
+    usuario quiere comprar de nuevo, crea otra orden. Un pago aprobado que llega después (reintento dentro
+    de la pasarela) no reactiva la orden ni toca el stock; se ignora como cualquier notificación sobre una
+    orden cerrada, dejando constancia en el log con los dos ids."""
+    import logging
     app_context.config['MERCADOPAGO_WEBHOOK_SECRET'] = WEBHOOK_SECRET
     stock_restaurado = test_hardware.stock
     order = crear_orden_con_hardware(test_user, test_hardware, status='rejected')
@@ -212,20 +214,44 @@ def test_webhook_reintento_exitoso_tras_rechazo_vuelve_a_descontar_stock(client,
         'controllers.webhooks.obtener_pago',
         lambda payment_id: {'status': 'approved', 'external_reference': str(order.id), 'payment_method_id': 'visa'}
     )
-    monkeypatch.setattr(
-        'controllers.webhooks.send_order_confirmation_email',
-        lambda email, username, o: True
-    )
+    enviados = []
+    monkeypatch.setattr('controllers.webhooks.send_order_confirmation_email', lambda *a: enviados.append(1) or True)
 
-    headers = firmar('888')
-    response = enviar_webhook(client, '888', headers=headers)
+    with caplog.at_level(logging.INFO):
+        response = enviar_webhook(client, '888', headers=firmar('888'))
 
     assert response.status_code == 200
     db.session.refresh(order)
-    assert order.status == 'approved'
+    assert order.status == 'rejected', 'una orden rechazada es final: no se reactiva'
+    assert db.session.get(Hardware, test_hardware.id).stock == stock_restaurado, 'no debe volver a descontarse stock'
+    assert enviados == [], 'no se confirma una orden que sigue rechazada'
+    mensajes = [r.getMessage() for r in caplog.records]
+    assert any('888' in m and str(order.id) in m and 'rejected' in m for m in mensajes), mensajes
 
-    hardware = db.session.get(Hardware, test_hardware.id)
-    assert hardware.stock == stock_restaurado - 2, 'debe volver a descontarse el stock de la orden que ahora se aprobó'
+
+def test_webhook_secuencia_rechazo_en_proceso_aprobado_no_sobrevende(client, app_context, test_user, test_hardware, monkeypatch):
+    """Reproducción del informe: rejected -> in_process -> approved dejaba la orden `approved` con el stock
+    ya devuelto (se vendían unidades que el inventario daba por libres). Ahora la orden se queda en
+    `rejected` y el stock se devuelve una sola vez."""
+    app_context.config['MERCADOPAGO_WEBHOOK_SECRET'] = WEBHOOK_SECRET
+    stock_antes = test_hardware.stock
+    order = crear_orden_con_hardware(test_user, test_hardware, status='pending')
+    estado_mp = {'actual': None}
+
+    monkeypatch.setattr(
+        'controllers.webhooks.obtener_pago',
+        lambda payment_id: {'status': estado_mp['actual'], 'external_reference': str(order.id), 'payment_method_id': 'visa'}
+    )
+    monkeypatch.setattr('controllers.webhooks.send_order_confirmation_email', lambda *a: True)
+    monkeypatch.setattr('controllers.webhooks.send_order_rejected_email', lambda *a: True)
+
+    for i, estado in enumerate(('rejected', 'in_process', 'approved')):
+        estado_mp['actual'] = estado
+        assert enviar_webhook(client, f'90{i}', headers=firmar(f'90{i}')).status_code == 200
+
+    db.session.refresh(order)
+    assert order.status == 'rejected'
+    assert db.session.get(Hardware, test_hardware.id).stock == stock_antes + 2
 
 
 def test_webhook_usa_payment_id_de_query_string_no_del_body(client, app_context, test_user, test_hardware, monkeypatch):

@@ -56,19 +56,23 @@
                         </div>
                         <div class="col-md-6">
                             <h5>Estado de la Orden</h5>
+                            {% set etiquetas = {'pending': 'Pendiente', 'approved': 'Aprobada', 'rejected': 'Rechazada', 'completed': 'Completada (heredado)', 'cancelled': 'Cancelada'} %}
+                            <p class="mb-2"><strong>Estado actual:</strong> {{ etiquetas.get(order.status, order.status) }}</p>
+                            {% if estados_destino %}
                             <form method="POST" action="{{ url_for('admin.actualizar_estado_orden', order_id=order.id) }}" class="mb-3">
                                 <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                                 <div class="input-group">
                                     <select class="form-select" name="status">
-                                        <option value="pending" {% if order.status == 'pending' %}selected{% endif %}>Pendiente</option>
-                                        <option value="approved" {% if order.status == 'approved' %}selected{% endif %}>Aprobada</option>
-                                        <option value="rejected" {% if order.status == 'rejected' %}selected{% endif %}>Rechazada</option>
-                                        <option value="completed" {% if order.status == 'completed' %}selected{% endif %}>Completada (heredado)</option>
-                                        <option value="cancelled" {% if order.status == 'cancelled' %}selected{% endif %}>Cancelada</option>
+                                        {% for estado in estados_destino %}
+                                        <option value="{{ estado }}">{{ etiquetas[estado] }}</option>
+                                        {% endfor %}
                                     </select>
                                     <button type="submit" class="btn btn-primary">Actualizar Estado</button>
                                 </div>
                             </form>
+                            {% else %}
+                            <p class="text-muted mb-3">Esta orden está en un estado final: no se puede cambiar.</p>
+                            {% endif %}
                             <p><strong>Total:</strong> ${{ "%.2f"|format(order.total) }}</p>
                         </div>
                     </div>
