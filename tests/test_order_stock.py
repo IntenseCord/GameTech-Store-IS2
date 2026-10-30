@@ -1,7 +1,7 @@
 """
 Tests de utils/order_stock.py.
 
-Regresión de rendimiento (2026-09-18): restaurar_stock/descontar_stock hacían
+Regresión de rendimiento (2026-09-18): restaurar_stock (y la antigua descontar_stock) hacían
 un SELECT y un UPDATE por cada ítem de la orden (1 + 2 por ítem). Medido
 contra Neon, cada sentencia costaba ~150 ms de viaje de red, así que una orden
 de 5 ítems tardaba ~1,3 s solo en restaurar stock. Ahora el ajuste se hace con
@@ -15,7 +15,7 @@ from sqlalchemy import event
 
 from extensions import db
 from models.database_models import Game, Hardware, Order, OrderItem
-from utils.order_stock import descontar_stock, restaurar_stock
+from utils.order_stock import restaurar_stock
 
 
 def crear_hardware(stock, cantidad=1):
@@ -96,18 +96,6 @@ def test_restaurar_stock_suma_lineas_repetidas_del_mismo_producto(app_context, t
     assert stock_en_bd(Hardware, hw.id) == 8
 
 
-def test_descontar_stock_resta_cantidades(app_context, test_user):
-    juego = crear_juegos(stock=10)[0]
-    hw = crear_hardware(stock=5)[0]
-    order = crear_orden(test_user, [('game', juego, 2), ('hardware', hw, 3)])
-
-    descontar_stock(order)
-    db.session.flush()
-
-    assert stock_en_bd(Game, juego.id) == 8
-    assert stock_en_bd(Hardware, hw.id) == 2
-
-
 def test_no_toca_productos_que_no_estan_en_la_orden(app_context, test_user):
     en_orden, ajeno = crear_hardware(stock=5, cantidad=2)
     order = crear_orden(test_user, [('hardware', en_orden, 3)])
@@ -180,19 +168,6 @@ def test_restaurar_stock_usa_numero_constante_de_sentencias(app_context, test_us
 
     def accion():
         restaurar_stock(order)
-        db.session.flush()
-
-    assert contar_sentencias(accion) <= 2, 'debe ser un UPDATE por tabla, no uno por ítem'
-
-
-def test_descontar_stock_usa_numero_constante_de_sentencias(app_context, test_user):
-    hardware = crear_hardware(stock=5, cantidad=5)
-    juegos = crear_juegos(stock=5, cantidad=2)
-    items = [('hardware', h, 1) for h in hardware] + [('game', j, 1) for j in juegos]
-    order = crear_orden(test_user, items)
-
-    def accion():
-        descontar_stock(order)
         db.session.flush()
 
     assert contar_sentencias(accion) <= 2, 'debe ser un UPDATE por tabla, no uno por ítem'

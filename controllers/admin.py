@@ -8,7 +8,7 @@ from sqlalchemy.exc import SQLAlchemyError
 from extensions import db
 from models.database_models import User, Game, Hardware, Order, CartItem, Wishlist
 from utils.error_handling import log_db_error
-from utils.order_stock import descontar_stock, restaurar_stock
+from utils.order_stock import TRANSICIONES, cambiar_estado_orden, estados_destino
 import os
 from datetime import datetime
 
@@ -552,7 +552,7 @@ def ver_orden(order_id):
     """Ver detalles de una orden"""
     try:
         order = db.get_or_404(Order, order_id)
-        return render_template('admin/orden_detalle.html', order=order)
+        return render_template('admin/orden_detalle.html', order=order, estados_destino=estados_destino(order.status))
     except SQLAlchemyError as e:
         log_db_error('ver_orden', e)
         flash('Error al cargar la orden', 'danger')
@@ -566,25 +566,16 @@ def actualizar_estado_orden(order_id):
     try:
         order = db.get_or_404(Order, order_id)
         nuevo_estado = request.form.get('status')
-        # 'completed' es un valor heredado de antes del Incremento 1 (pagos):
-        # se deja como valor válido por compatibilidad con órdenes viejas, no
-        # como destino nuevo. approved/rejected son los que pone el webhook
-        # de MercadoPago; el admin puede corregirlos manualmente si hace falta.
-        if nuevo_estado in ['pending', 'approved', 'rejected', 'completed', 'cancelled']:
-            estado_anterior = order.status
-            # Mismo criterio de ajuste de stock que usa el webhook de
-            # MercadoPago (utils/order_stock.py), para que una corrección
-            # manual del admin no desincronice el inventario.
-            if nuevo_estado == 'rejected' and estado_anterior != 'rejected':
-                restaurar_stock(order)
-            elif nuevo_estado in ('approved', 'completed') and estado_anterior == 'rejected':
-                descontar_stock(order)
-
-            order.status = nuevo_estado
+        # Misma regla de transiciones y de stock que el webhook de MercadoPago
+        # (utils/order_stock.py): rejected y cancelled son finales, así que una
+        # corrección manual no puede desincronizar el inventario.
+        if nuevo_estado not in TRANSICIONES:
+            flash('Estado inválido', 'danger')
+        elif cambiar_estado_orden(order, nuevo_estado):
             db.session.commit()
             flash('Estado de la orden actualizado', 'success')
         else:
-            flash('Estado inválido', 'danger')
+            flash(f'Cambio de estado no está permitido: la orden está "{order.status}" y no puede pasar a "{nuevo_estado}"', 'danger')
         return redirect(url_for('admin.ver_orden', order_id=order_id))
     except SQLAlchemyError as e:
         log_db_error('actualizar_estado_orden', e)

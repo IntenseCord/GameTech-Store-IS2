@@ -51,8 +51,8 @@ def test_notificacion_tardia_no_revierte():
     pass
 
 
-@scenario(FEATURE, 'Un reintento de pago exitoso tras un rechazo vuelve a descontar el stock')
-def test_reintento_exitoso_descuenta_stock():
+@scenario(FEATURE, 'Un pago aprobado sobre una orden ya rechazada no la reactiva')
+def test_pago_aprobado_sobre_orden_rechazada_no_la_reactiva():
     pass
 
 
@@ -170,12 +170,6 @@ def verificar_stock_restaurado(hardware):
 def verificar_stock_no_restaurado(hardware):
     hw = _hardware_actual(hardware.id)
     assert hw.stock == hardware.stock_inicial
-
-
-@then('el stock del hardware debería descontarse de nuevo')
-def verificar_stock_descontado_de_nuevo(hardware):
-    hw = _hardware_actual(hardware.id)
-    assert hw.stock == hardware.stock_inicial - 1
 
 
 @then('debería poder solicitar factura de esa orden')

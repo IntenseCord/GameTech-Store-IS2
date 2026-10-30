@@ -32,11 +32,11 @@ Feature: Pagos con MercadoPago (Incremento 1 y 2)
     Then la orden debería quedar en estado "approved"
     And el stock del hardware no debería restaurarse
 
-  Scenario: Un reintento de pago exitoso tras un rechazo vuelve a descontar el stock
+  Scenario: Un pago aprobado sobre una orden ya rechazada no la reactiva
     Given tengo una orden "rejected" de ese hardware
     When MercadoPago notifica que el pago fue "aprobado"
-    Then la orden debería quedar en estado "approved"
-    And el stock del hardware debería descontarse de nuevo
+    Then la orden debería quedar en estado "rejected"
+    And el stock del hardware no debería restaurarse
 
   Scenario: El panel de administración muestra una orden aprobada como pagada
     Given tengo una orden "approved" de ese hardware

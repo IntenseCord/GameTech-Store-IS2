@@ -75,26 +75,80 @@ def test_actualizar_estado_orden_a_rechazada_restaura_stock(client, test_hardwar
     assert hardware.stock == stock_vendido + 1
 
 
-def test_actualizar_estado_orden_a_aprobada_tras_rechazo_descuenta_stock(client, test_hardware):
-    """Reintento de pago corregido a mano: si una orden rechazada (con
-    stock ya restaurado) se marca 'approved', el stock debe descontarse
-    de nuevo."""
+def _orden_admin(client, hardware, estado, cantidad=1):
     crear_admin_logueado(client)
     admin = User.query.filter_by(username='admintest').first()
-    stock_restaurado = test_hardware.stock
-    order = Order(user_id=admin.id, total=test_hardware.precio, status='rejected')
+    order = Order(user_id=admin.id, total=hardware.precio, status=estado)
     db.session.add(order)
     db.session.flush()
     db.session.add(OrderItem(
-        order_id=order.id, product_type='hardware', product_id=test_hardware.id,
-        product_name='Test Hardware', quantity=1, price=test_hardware.precio
+        order_id=order.id, product_type='hardware', product_id=hardware.id,
+        product_name='Test Hardware', quantity=cantidad, price=hardware.precio
     ))
     db.session.commit()
+    return order
 
-    client.post(f'/admin/orden/{order.id}/estado', data={'status': 'approved'})
 
-    hardware = db.session.get(Hardware, test_hardware.id)
-    assert hardware.stock == stock_restaurado - 1
+def test_orden_rechazada_es_estado_final_el_admin_no_puede_aprobarla(client, test_hardware):
+    """`rejected` es final (decisión del usuario, 2026-10-27): su stock ya se devolvió; aprobarla a mano
+    la dejaría vendida sin stock reservado. Debe crearse otra orden."""
+    stock_restaurado = test_hardware.stock
+    order = _orden_admin(client, test_hardware, 'rejected')
+
+    response = client.post(f'/admin/orden/{order.id}/estado', data={'status': 'approved'}, follow_redirects=True)
+
+    db.session.refresh(order)
+    assert order.status == 'rejected'
+    assert db.session.get(Hardware, test_hardware.id).stock == stock_restaurado
+    assert 'no está permitido'.encode() in response.data
+
+
+def test_actualizar_estado_orden_a_cancelada_restaura_stock(client, test_hardware):
+    """Hallazgo 34: pasar una orden a 'cancelled' no devolvía el stock reservado."""
+    stock_reservado = test_hardware.stock
+    order = _orden_admin(client, test_hardware, 'pending', cantidad=2)
+
+    client.post(f'/admin/orden/{order.id}/estado', data={'status': 'cancelled'})
+
+    db.session.refresh(order)
+    assert order.status == 'cancelled'
+    assert db.session.get(Hardware, test_hardware.id).stock == stock_reservado + 2
+
+
+def test_el_admin_no_puede_pasar_una_orden_pendiente_a_completada(client, test_hardware):
+    order = _orden_admin(client, test_hardware, 'pending')
+
+    client.post(f'/admin/orden/{order.id}/estado', data={'status': 'completed'})
+
+    db.session.refresh(order)
+    assert order.status == 'pending'
+
+
+def test_orden_rechazada_no_se_puede_cancelar_ni_devolver_stock_dos_veces(client, test_hardware):
+    stock_restaurado = test_hardware.stock
+    order = _orden_admin(client, test_hardware, 'rejected')
+
+    client.post(f'/admin/orden/{order.id}/estado', data={'status': 'cancelled'})
+
+    db.session.refresh(order)
+    assert order.status == 'rejected'
+    assert db.session.get(Hardware, test_hardware.id).stock == stock_restaurado
+
+
+def test_el_detalle_de_orden_solo_ofrece_los_estados_a_los_que_se_puede_pasar(client, test_hardware):
+    pendiente = _orden_admin(client, test_hardware, 'pending')
+    final = Order(user_id=pendiente.user_id, total=1, status='rejected')
+    db.session.add(final)
+    db.session.commit()
+
+    html_pendiente = client.get(f'/admin/orden/{pendiente.id}').data.decode()
+    html_final = client.get(f'/admin/orden/{final.id}').data.decode()
+
+    assert 'name="status"' in html_pendiente
+    assert 'value="approved"' in html_pendiente and 'value="rejected"' in html_pendiente
+    assert 'value="completed"' not in html_pendiente, "'completed' es heredado: no se ofrece como destino"
+    assert 'name="status"' not in html_final, 'una orden en estado final no debe ofrecer cambio de estado'
+    assert 'estado final' in html_final.lower()
 
 
 def test_editar_hardware_rechaza_tipo_invalido(client):
