@@ -120,12 +120,14 @@ function displaySystemScore(score) {
     const container = document.getElementById('system-score-card');
     
     const tierColor = getTierColor(score.total);
+    // Un componente sin benchmark no es un cero: se muestra como "—", nunca como "null"
+    const puntos = (valor, sufijo = '') => (valor === null || valor === undefined ? '—' : `${valor}${sufijo}`);
     
     container.innerHTML = `
         <div class="card-body text-center py-4" style="background: linear-gradient(135deg, ${tierColor}22 0%, ${tierColor}11 100%);">
             <div class="row align-items-center">
                 <div class="col-md-4">
-                    <div class="score-display">${score.total}</div>
+                    <div class="score-display">${puntos(score.total)}</div>
                     <p class="text-muted mb-0">Puntuación Total</p>
                 </div>
                 <div class="col-md-4">
@@ -138,15 +140,15 @@ function displaySystemScore(score) {
                     <div class="row g-2">
                         <div class="col-12">
                             <small class="text-muted">CPU:</small>
-                            <strong class="ms-2">${score.cpu_score}</strong>
+                            <strong class="ms-2">${puntos(score.cpu_score)}</strong>
                         </div>
                         <div class="col-12">
                             <small class="text-muted">GPU:</small>
-                            <strong class="ms-2">${score.gpu_score}</strong>
+                            <strong class="ms-2">${puntos(score.gpu_score)}</strong>
                         </div>
                         <div class="col-12">
                             <small class="text-muted">RAM:</small>
-                            <strong class="ms-2">${score.ram_gb}GB</strong>
+                            <strong class="ms-2">${puntos(score.ram_gb, 'GB')}</strong>
                         </div>
                     </div>
                 </div>
@@ -259,6 +261,8 @@ function displayGameCompatibility(games) {
     document.getElementById('medium-count').textContent = games.can_run_medium.length;
     document.getElementById('low-count').textContent = games.can_run_low.length;
     document.getElementById('cannot-count').textContent = games.cannot_run.length;
+    const sinDatos = games.sin_datos || [];
+    document.getElementById('sin-datos-count').textContent = sinDatos.length;
     
     // Renderizar cada categoría
     renderGameCategory('ultra-games', games.can_run_ultra, 'ultra', 'success');
@@ -266,6 +270,7 @@ function displayGameCompatibility(games) {
     renderGameCategory('medium-games', games.can_run_medium, 'medium', 'warning');
     renderGameCategory('low-games', games.can_run_low, 'low', 'secondary');
     renderGameCategory('cannot-games', games.cannot_run, 'cannot', 'danger');
+    renderGameCategory('sin-datos-games', sinDatos, 'sin_datos', 'secondary');
 }
 
 /**
@@ -296,18 +301,18 @@ function renderGameCategory(containerId, games, quality, badgeColor) {
                     </div>
                     <div class="col-md-6">
                         <h5 class="mb-1">${escapeHtml(game.nombre)}</h5>
-                        ${game.reason ? `<small class="text-danger">${game.reason}</small>` : ''}
+                        ${game.reason ? `<small class="${quality === 'sin_datos' ? 'text-muted' : 'text-danger'}">${escapeHtml(game.reason)}</small>` : ''}
                         ${game.bottleneck ? `
                             <div class="mt-2">
                                 <span class="badge bg-warning text-dark">
                                     <i class="fas fa-exclamation-triangle me-1"></i>
-                                    Limitado por ${game.bottleneck.toUpperCase()}
+                                    Limitado por ${escapeHtml(game.bottleneck).toUpperCase()}
                                 </span>
                             </div>
                         ` : ''}
                     </div>
                     <div class="col-md-2 text-center">
-                        ${game.expected_fps > 0 ? `
+                        ${quality === 'sin_datos' ? '<small class="text-muted">Sin datos</small>' : game.expected_fps > 0 ? `
                             <div class="fps-indicator text-${badgeColor}">
                                 ${game.expected_fps} FPS
                             </div>
@@ -335,6 +340,7 @@ function renderGameCategory(containerId, games, quality, badgeColor) {
  */
 
 function getTierColor(score) {
+    if (score === null || score === undefined) return '#9e9e9e';
     if (score >= 15000) return '#9c27b0';
     if (score >= 10000) return '#2196f3';
     if (score >= 7000) return '#4caf50';
@@ -344,11 +350,12 @@ function getTierColor(score) {
 
 function getQualityLabel(quality) {
     const labels = {
-        'ultra': 'Ultra (4K)',
-        'high': 'Alto (1440p)',
+        'ultra': 'Ultra (1440p/4K)',
+        'high': 'Alto (1080p)',
         'medium': 'Medio (1080p)',
-        'low': 'Bajo (720p)',
-        'cannot': 'No Compatible'
+        'low': 'Bajo (mínimo)',
+        'cannot': 'No Compatible',
+        'sin_datos': 'Sin datos'
     };
     return labels[quality] || quality;
 }
