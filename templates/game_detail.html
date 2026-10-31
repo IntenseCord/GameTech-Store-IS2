@@ -83,15 +83,15 @@
                 <div class="row g-3">
                     <div class="col-md-4">
                         <label for="user-cpu" class="form-label">Tu CPU</label>
-                        <input  type="text" class="form-control" id="user-cpu" placeholder="Ej: Intel Core i5-12400F">
+                        <input  type="text" class="form-control" id="user-cpu" list="cpu-opciones" placeholder="Ej: Intel Core i5-12400F">
                     </div>
                     <div class="col-md-4">
                         <label for="user-gpu" class="form-label">Tu GPU</label>
-                        <input type="text" class="form-control" id="user-gpu" placeholder="Ej: NVIDIA RTX 4060">
+                        <input type="text" class="form-control" id="user-gpu" list="gpu-opciones" placeholder="Ej: NVIDIA RTX 4060">
                     </div>
                     <div class="col-md-4">
                         <label for="user-ram" class="form-label">Tu RAM</label>
-                        <input type="text" class="form-control" id="user-ram" placeholder="Ej: 16 GB">
+                        <input type="text" class="form-control" id="user-ram" list="ram-opciones" placeholder="Ej: 16 GB">
                     </div>
                 </div>
                 <div class="mt-3">
@@ -99,6 +99,15 @@
                         <i class="fas fa-search me-2"></i>Verificar Compatibilidad
                     </button>
                 </div>
+                <datalist id="cpu-opciones">
+                    {% for c in cpus %}<option value="{{ c.marca }} {{ c.modelo }}"></option>{% endfor %}
+                </datalist>
+                <datalist id="gpu-opciones">
+                    {% for g in gpus %}<option value="{{ g.marca }} {{ g.modelo }}"></option>{% endfor %}
+                </datalist>
+                <datalist id="ram-opciones">
+                    {% for r in rams %}<option value="{{ r.get_ram_capacity_gb() }} GB">{{ r.marca }} {{ r.modelo }}</option>{% endfor %}
+                </datalist>
                 <div id="compatibility-result" class="mt-3" style="display: none;">
                     <!-- Resultado se mostrará aquí -->
                 </div>
@@ -229,13 +238,25 @@ document.addEventListener('DOMContentLoaded', function() {
         })
         .then(response => response.json())
         .then(data => {
-            const compatible = Boolean(data.success) && data.juegos.some(j => j.id === {{ juego.id }});
+            const juegoActual = data.success ? data.juegos.find(j => j.id === {{ juego.id }}) : null;
+            const sinDatos = Boolean(data.success) && data.sin_datos.includes({{ juego.id }});
+            const nombres = { cpu: 'CPU', gpu: 'GPU', ram: 'RAM' };
+            const calidades = { ultra: 'Ultra', high: 'Alta', medium: 'Media', low: 'Baja' };
 
-            if (compatible) {
+            if (sinDatos && !juegoActual) {
+                const desconocidos = (data.componentes_sin_datos || []).map(c => nombres[c]).join(', ');
+                resultDiv.innerHTML = `
+                    <div class="alert alert-info">
+                        <i class="fas fa-question-circle me-2"></i>
+                        <strong>No podemos confirmarlo.</strong>
+                        ${desconocidos ? `No tenemos datos de tu ${desconocidos}: elige una de las sugerencias de la lista.` : 'Este juego aún no tiene requisitos cargados.'}
+                    </div>
+                `;
+            } else if (juegoActual) {
                 resultDiv.innerHTML = `
                     <div class="alert alert-success">
                         <i class="fas fa-check-circle me-2"></i>
-                        <strong>¡Compatible!</strong> Tu hardware puede correr este juego sin problemas.
+                        <strong>¡Compatible!</strong> Tu hardware puede correr este juego (calidad estimada: ${calidades[juegoActual.calidad] || juegoActual.calidad}, ~${juegoActual.fps_estimado} FPS).
                     </div>
                 `;
             } else {

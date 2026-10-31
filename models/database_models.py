@@ -119,42 +119,6 @@ class Game(db.Model):
         return db.session.get(cls, game_id)
     
     @classmethod
-    def get_games_by_hardware(cls, hardware_specs):
-        """Obtener juegos compatibles con el hardware especificado usando el sistema de compatibilidad"""
-        from models.compatibility import Compatibility
-
-        juegos = cls.get_all_games()
-        juegos_compatibles = []
-
-        for juego in juegos:
-            # Convertir hardware_specs a objetos Hardware para compatibilidad
-            componentes = []
-            for tipo, specs in hardware_specs.items():
-                # hardware_specs puede traer, por tipo, un dict de specs o
-                # texto libre (ej. "Intel Core i5-3570K", como llega desde
-                # /consultar-compatibilidad) — normalizar a dict antes de
-                # usar specs.get(...), que rompía con AttributeError si
-                # specs era un string.
-                if not isinstance(specs, dict):
-                    specs = {'marca': '', 'modelo': str(specs), 'capacidad': str(specs)}
-
-                # Crear un objeto Hardware temporal para la comparación
-                componente = Hardware(
-                    tipo=tipo.upper(),
-                    marca=specs.get('marca', ''),
-                    modelo=specs.get('modelo', ''),
-                    especificaciones=json.dumps(specs)
-                )
-                componentes.append(componente)
-
-            # Verificar compatibilidad usando el sistema existente
-            resultado = Compatibility.verificar_compatibility_completa([juego], componentes)
-            if resultado['compatible']:
-                juegos_compatibles.append(juego)
-
-        return juegos_compatibles
-    
-    @classmethod
     def search_games(cls, query):
         """Buscar juegos por nombre, descripción o desarrollador"""
         if not query:

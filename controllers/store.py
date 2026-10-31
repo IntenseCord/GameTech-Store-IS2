@@ -1,6 +1,7 @@
 from flask import Blueprint, render_template, request, jsonify
-from models.database_models import Game, Hardware
-from models.compatibility import Compatibility
+from models.database_models import Game, GameRequirements, Hardware
+from utils.hardware_engine import SIN_DATOS, Sistema, evaluar_juego, sistema_de
+from utils.hardware_resolver import ram_gb_de_texto, resolver_componente
 
 store_bp = Blueprint('store', __name__)
 
@@ -71,7 +72,9 @@ def juego_detalle(juego_id):
         # Obtener juegos relacionados (mismo género)
         juegos_relacionados = Game.query.filter_by(genero=juego.genero).filter(Game.id != juego.id).limit(3).all()
 
-        return render_template('game_detail.html', juego=juego, juegos_relacionados=juegos_relacionados)
+        return render_template('game_detail.html', juego=juego, juegos_relacionados=juegos_relacionados,
+                               cpus=Hardware.get_hardware_by_tipo('CPU'), gpus=Hardware.get_hardware_by_tipo('GPU'),
+                               rams=Hardware.get_hardware_by_tipo('RAM'))
     except Exception as e:
         from flask import current_app
         current_app.logger.error(f'Error en juego_detalle: {str(e)}')
@@ -94,30 +97,69 @@ def hardware_detalle(hardware_id):
         current_app.logger.error(f'Error en hardware_detalle: {str(e)}')
         return render_template('500.html'), 500
 
+def _requisitos_por_juego(juegos):
+    """Un solo SELECT con los requisitos de todos los juegos: {game_id: GameRequirements}."""
+    if not juegos:
+        return {}
+    ids = [j.id for j in juegos]
+    return {r.game_id: r for r in GameRequirements.query.filter(GameRequirements.game_id.in_(ids)).all()}
+
+
+def _sistema_desde_texto(datos):
+    """Convierte el texto de la tienda (nombres del catálogo o texto libre) en un Sistema del motor.
+
+    Un componente que se escribió pero no se reconoce (o no tiene benchmark_score) queda como `desconocido`:
+    no se inventa una potencia por palabras ("i5" = 70, desconocido = 50) como hacía el motor anterior.
+    """
+    desconocidos = []
+
+    def puntos(clave, tipo):
+        texto = str(datos.get(clave) or '').strip()
+        if not texto:
+            return None
+        componente = resolver_componente(tipo, texto)
+        puntuacion = componente.benchmark_score if componente else None
+        if not puntuacion or puntuacion <= 0:
+            desconocidos.append(clave)
+            return None
+        return puntuacion
+
+    cpu = puntos('cpu', 'CPU')
+    gpu = puntos('gpu', 'GPU')
+    texto_ram = str(datos.get('ram') or '').strip()
+    ram_gb = ram_gb_de_texto(texto_ram) if texto_ram else None
+    if texto_ram and ram_gb is None:
+        desconocidos.append('ram')
+    indicados = [k for k in ('cpu', 'gpu', 'ram') if str(datos.get(k) or '').strip()]
+    return Sistema(cpu=cpu, gpu=gpu, ram_gb=ram_gb, desconocidos=tuple(desconocidos)), indicados
+
+
 @store_bp.route('/consultar-compatibilidad', methods=['POST'])
 def consultar_compatibilidad():
-    """Consultar compatibilidad de juegos con hardware específico"""
+    """Qué juegos puede correr el hardware indicado, evaluado con el mismo motor que el analizador."""
     try:
-        data = request.get_json()
+        datos = request.get_json(silent=True) or {}
+        sistema, indicados = _sistema_desde_texto(datos)
+        if not indicados:
+            return jsonify({'success': False, 'error': 'Indica al menos un componente'}), 400
 
-        # Obtener especificaciones del hardware del usuario
-        hardware_usuario = {
-            'cpu': data.get('cpu', ''),
-            'ram': data.get('ram', ''),
-            'gpu': data.get('gpu', ''),
-            'storage': data.get('storage', '')
-        }
-
-        # Obtener juegos compatibles
-        juegos_compatibles = Game.get_games_by_hardware(hardware_usuario)
-
-        # Crear lista de juegos para enviar al frontend
-        juegos_data = [juego.to_dict() for juego in juegos_compatibles]
+        juegos = Game.get_all_games()
+        requisitos = _requisitos_por_juego(juegos)
+        compatibles, sin_datos = [], []
+        for juego in juegos:
+            evaluacion = evaluar_juego(sistema, requisitos.get(juego.id))
+            if evaluacion['estado'] == SIN_DATOS:
+                sin_datos.append(juego.id)
+            elif evaluacion['puede_correr']:
+                compatibles.append({**juego.to_dict(), 'calidad': evaluacion['calidad'],
+                                    'fps_estimado': evaluacion['fps'], 'limitante': evaluacion['limitante']})
 
         return jsonify({
             'success': True,
-            'juegos': juegos_data,
-            'total': len(juegos_data)
+            'juegos': compatibles,
+            'total': len(compatibles),
+            'sin_datos': sin_datos,
+            'componentes_sin_datos': list(sistema.desconocidos),
         })
     except Exception as e:
         from flask import current_app
@@ -126,27 +168,26 @@ def consultar_compatibilidad():
 
 @store_bp.route('/verificar-setup-completo', methods=['POST'])
 def verificar_setup_completo():
-    """Verificar compatibilidad de un setup completo con juegos seleccionados"""
+    """Verificar un setup (CPU, GPU y RAM del catálogo) contra los juegos seleccionados, con el motor único."""
     try:
-        data = request.get_json()
+        data = request.get_json(silent=True) or {}
 
-        juegos_seleccionados_ids = data.get('juegos', [])
-        componentes_seleccionados_ids = data.get('componentes', [])
+        juegos = [j for j in (Game.get_game_by_id(jid) for jid in data.get('juegos', [])) if j]
+        componentes = [c for c in (Hardware.get_hardware_by_id(cid) for cid in data.get('componentes', [])) if c]
 
-        # Obtener objetos de juegos y componentes
-        juegos = [Game.get_game_by_id(jid) for jid in juegos_seleccionados_ids if Game.get_game_by_id(jid)]
-        componentes = [Hardware.get_hardware_by_id(cid) for cid in componentes_seleccionados_ids if Hardware.get_hardware_by_id(cid)]
+        def primero(tipo):
+            return next((c for c in componentes if c.tipo == tipo), None)
 
-        # Verificar compatibilidad
-        resultado = Compatibility.verificar_compatibility_completa(juegos, componentes)
-
-        # Calcular precio total
-        precio_total = float(sum(componente.precio for componente in componentes) + sum(juego.precio for juego in juegos))
+        sistema = sistema_de(primero('CPU'), primero('GPU'), primero('RAM'))
+        requisitos = _requisitos_por_juego(juegos)
+        detalles = [{'juego': j.nombre, 'juego_id': j.id, **evaluar_juego(sistema, requisitos.get(j.id))} for j in juegos]
+        precio_total = float(sum(c.precio for c in componentes) + sum(j.precio for j in juegos))
 
         return jsonify({
             'success': True,
-            'compatible': resultado['compatible'],
-            'detalles': resultado['detalles'],
+            'compatible': bool(detalles) and all(d['puede_correr'] is True for d in detalles),
+            'detalles': detalles,
+            'sin_datos': [d['juego_id'] for d in detalles if d['estado'] == SIN_DATOS],
             'precio_total': precio_total,
             'componentes_count': len(componentes),
             'juegos_count': len(juegos)

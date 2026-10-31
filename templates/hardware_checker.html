@@ -198,6 +198,14 @@
                                 <span class="badge bg-danger ms-1" id="cannot-count">0</span>
                                 </button>
                             </li>
+                            <li class="nav-item">
+                                <button class="nav-link" id="sin-datos-tab" data-bs-toggle="tab"
+                                    data-bs-target="#sin-datos-games" type="button" role="tab" aria-controls="sin-datos-games" aria-selected="false">
+                                <i class="fas fa-question-circle text-muted me-1" aria-hidden="true"></i>
+                                Sin datos
+                                <span class="badge bg-secondary ms-1" id="sin-datos-count">0</span>
+                                </button>
+                            </li>
                             </ul>
 
                         <!-- Tab Content -->
@@ -207,6 +215,7 @@
                             <div class="tab-pane fade" id="medium-games"></div>
                             <div class="tab-pane fade" id="low-games"></div>
                             <div class="tab-pane fade" id="cannot-games"></div>
+                            <div class="tab-pane fade" id="sin-datos-games"></div>
                         </div>
                     </div>
                 </div>
@@ -253,6 +262,7 @@
     .game-card.medium { border-left-color: #fd7e14; }
     .game-card.low { border-left-color: #6c757d; }
     .game-card.cannot { border-left-color: #dc3545; }
+    .game-card.sin_datos { border-left-color: #6c757d; }
     
     .score-display {
         font-size: 3rem;
