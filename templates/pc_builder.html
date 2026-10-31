@@ -6,37 +6,7 @@
 <div class="row mb-4">
     <div class="col">
         <h1 class="display-4 fw-bold">Configurador de PC Gaming</h1>
-        <p class="lead text-muted">Construye tu PC perfecta paso a paso con nuestras recomendaciones inteligentes</p>
-    </div>
-</div>
-
-<!-- Selector de Presupuesto y Uso -->
-<div class="row mb-5">
-    <div class="col">
-        <div class="card">
-            <div class="card-body">
-                <div class="row g-4">
-                    <div class="col-md-6">
-                        <label for="budget-select" class="form-label">Presupuesto Total</label>
-                        <select class="form-select form-select-lg" id="budget-select">
-                            <option value="800">Básico - $800 (Gaming 1080p básico)</option>
-                            <option value="1200" selected>Equilibrado - $1,200 (Gaming 1080p/1440p)</option>
-                            <option value="1800">Avanzado - $1,800 (Gaming 1440p/4K)</option>
-                            <option value="2500">Premium - $2,500+ (Gaming 4K máximo rendimiento)</option>
-                        </select>
-                    </div>
-                    <div class="col-md-6">
-                        <label for="usage-select" class="form-label">Uso Principal</label>
-                        <select class="form-select form-select-lg" id="usage-select">
-                            <option value="gaming" selected>Gaming</option>
-                            <option value="streaming">Streaming/Gaming</option>
-                            <option value="content">Creación de Contenido</option>
-                            <option value="workstation">Workstation Profesional</option>
-                        </select>
-                    </div>
-                </div>
-            </div>
-        </div>
+        <p class="lead text-muted">Elige tus componentes y verifica al instante que encajen entre sí</p>
     </div>
 </div>
 
@@ -49,69 +19,22 @@
             </div>
             <div class="card-body">
                 <div class="row g-4">
-                    <!-- CPU -->
+                    {% for slot in slots %}
                     <div class="col-md-6">
-                        <div class="component-slot" id="cpu-slot">
+                        <div class="component-slot" id="slot-{{ slot.campo }}">
                             <div class="slot-header">
-                                <i class="fas fa-microchip me-2"></i>
-                                <span>Procesador</span>
-                                <button class="btn btn-sm btn-outline-primary ms-auto" onclick="selectComponent('CPU')">
+                                <i class="fas fa-{{ slot.icono }} me-2"></i>
+                                <span>{{ slot.etiqueta }}</span>
+                                <button class="btn btn-sm btn-outline-primary ms-auto" data-slot-tipo="{{ slot.tipo }}" aria-label="Elegir {{ slot.etiqueta }}">
                                     <i class="fas fa-plus"></i>
                                 </button>
                             </div>
-                            <div class="slot-content" id="cpu-content">
-                                <p class="text-muted">Selecciona un procesador</p>
+                            <div class="slot-content" id="content-{{ slot.campo }}">
+                                <p class="text-muted">{{ slot.texto }}</p>
                             </div>
                         </div>
                     </div>
-
-                    <!-- GPU -->
-                    <div class="col-md-6">
-                        <div class="component-slot" id="gpu-slot">
-                            <div class="slot-header">
-                                <i class="fas fa-video me-2"></i>
-                                <span>Tarjeta Gráfica</span>
-                                <button class="btn btn-sm btn-outline-primary ms-auto" onclick="selectComponent('GPU')">
-                                    <i class="fas fa-plus"></i>
-                                </button>
-                            </div>
-                            <div class="slot-content" id="gpu-content">
-                                <p class="text-muted">Selecciona una tarjeta gráfica</p>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- RAM -->
-                    <div class="col-md-6">
-                        <div class="component-slot" id="ram-slot">
-                            <div class="slot-header">
-                                <i class="fas fa-memory me-2"></i>
-                                <span>Memoria RAM</span>
-                                <button class="btn btn-sm btn-outline-primary ms-auto" onclick="selectComponent('RAM')">
-                                    <i class="fas fa-plus"></i>
-                                </button>
-                            </div>
-                            <div class="slot-content" id="ram-content">
-                                <p class="text-muted">Selecciona memoria RAM</p>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- Motherboard -->
-                    <div class="col-md-6">
-                        <div class="component-slot" id="motherboard-slot">
-                            <div class="slot-header">
-                                <i class="fas fa-server me-2"></i>
-                                <span>Placa Base</span>
-                                <button class="btn btn-sm btn-outline-primary ms-auto" onclick="selectComponent('Motherboard')">
-                                    <i class="fas fa-plus"></i>
-                                </button>
-                            </div>
-                            <div class="slot-content" id="motherboard-content">
-                                <p class="text-muted">Selecciona una placa base</p>
-                            </div>
-                        </div>
-                    </div>
+                    {% endfor %}
                 </div>
 
                 <!-- Resumen de Configuración -->
@@ -124,7 +47,7 @@
                                     <small class="text-muted">Precio Total</small>
                                 </div>
                                 <div class="col-md-4">
-                                    <h5 class="mb-1" id="performance-level">Básico</h5>
+                                    <h5 class="mb-1" id="performance-level">Sin componentes</h5>
                                     <small class="text-muted">Nivel de Rendimiento</small>
                                 </div>
                                 <div class="col-md-4">
@@ -136,6 +59,20 @@
                         </div>
                     </div>
                 </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Compatibilidad entre las piezas elegidas -->
+<div class="row mb-4">
+    <div class="col">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0"><i class="fas fa-plug me-2"></i>Compatibilidad</h5>
+            </div>
+            <div class="card-body" id="verificaciones" aria-live="polite">
+                <p class="text-muted mb-0">Elige al menos dos componentes que se relacionen (por ejemplo, CPU y placa base) para verificar su compatibilidad.</p>
             </div>
         </div>
     </div>
@@ -158,381 +95,23 @@
     </div>
 </div>
 
-<!-- Recomendaciones Automáticas -->
+<!-- Recomendaciones del motor -->
 <div class="row mb-4">
     <div class="col">
         <div class="card">
-            <div class="card-header d-flex justify-content-between align-items-center">
-                <h5 class="mb-0"><i class="fas fa-lightbulb me-2"></i>Recomendaciones Inteligentes</h5>
-                <button class="btn btn-sm btn-outline-primary" id="auto-recommend-btn">
-                    <i class="fas fa-magic me-1"></i>Auto-recomendar
-                </button>
+            <div class="card-header">
+                <h5 class="mb-0"><i class="fas fa-lightbulb me-2"></i>Recomendaciones</h5>
             </div>
-            <div class="card-body">
-                <div class="row g-3" id="recommendations-container">
-                    <div class="col-12 text-center">
-                        <p class="text-muted mb-3">Selecciona componentes o usa auto-recomendación para ver sugerencias</p>
-                        <div class="alert alert-info">
-                            <i class="fas fa-info-circle me-2"></i>
-                            Nuestras recomendaciones están basadas en:
-                            <ul class="mb-0 mt-2">
-                                <li>Tu presupuesto seleccionado</li>
-                                <li>El uso principal que especificaste</li>
-                                <li>La compatibilidad entre componentes</li>
-                                <li>Las últimas reseñas y benchmarks</li>
-                            </ul>
-                        </div>
-                    </div>
-                </div>
-            </div>
+            <div class="card-body" id="recommendations-container" aria-live="polite"></div>
         </div>
     </div>
 </div>
-
-
-
 {% endblock %}
 
 {% block extra_js %}
-<script>
-let currentBuild = {
-    CPU: null,
-    GPU: null,
-    RAM: null,
-    Motherboard: null
-};
-
-let componentsData = {};
-
-// Escapar HTML antes de insertar texto de catálogo (marca/modelo/descripción)
-// en innerHTML -- ver mismo fix en static/js/hardware_analyzer.js.
-function escapeHtml(text) {
-    const div = document.createElement('div');
-    div.textContent = text ?? '';
-    return div.innerHTML;
-}
-
-// Cargar datos de componentes al iniciar
-document.addEventListener('DOMContentLoaded', function() {
-    console.log('pc_builder: DOMContentLoaded - cargando componentes');
-    loadComponentsData();
-
-    // Event listeners
-    document.getElementById('budget-select').addEventListener('change', updateRecommendations);
-    document.getElementById('usage-select').addEventListener('change', updateRecommendations);
-    document.getElementById('auto-recommend-btn').addEventListener('click', autoRecommend);
-    document.getElementById('finalize-build-btn').addEventListener('click', finalizeBuild);
-});
-
-// Cargar datos de componentes desde el servidor
-async function loadComponentsData() {
-    try {
-        const tipos = ['CPU', 'GPU', 'RAM', 'Motherboard'];
-        for (const tipo of tipos) {
-            const response = await fetch(`/api/hardware/por-tipo/${tipo}`);
-            const data = await response.json();
-            componentsData[tipo] = data.resultados || [];
-            console.log(`pc_builder: cargados ${componentsData[tipo].length} componentes para tipo=${tipo}`);
-        }
-    } catch (error) {
-        console.error('Error cargando datos de componentes:', error);
-    }
-}
-
-// Función para seleccionar componente
-function selectComponent(tipo) {
-    const modal = new bootstrap.Modal(document.getElementById('componentModal'));
-    const modalLabel = document.getElementById('componentModalLabel');
-    const optionsContainer = document.getElementById('component-options');
-
-    modalLabel.textContent = `Seleccionar ${tipo}`;
-    optionsContainer.innerHTML = '';
-
-    const componentes = componentsData[tipo] || [];
-
-    for (const componente of componentes) {
-        const componentCard = document.createElement('div');
-        componentCard.className = 'component-option card mb-2';
-        componentCard.innerHTML = `
-            <div class="card-body">
-                <div class="row align-items-center">
-                    <div class="col-md-2">
-                        <img src="${escapeHtml(componente.imagen)}" class="img-fluid rounded" alt="${escapeHtml(componente.modelo)}">
-                    </div>
-                    <div class="col-md-6">
-                        <h6 class="mb-1">${escapeHtml(componente.marca)} ${escapeHtml(componente.modelo)}</h6>
-                        <p class="text-muted small mb-0">${escapeHtml(componente.descripcion)}</p>
-                    </div>
-                    <div class="col-md-2">
-                        <strong class="text-primary">$${componente.precio}</strong>
-                    </div>
-                    <div class="col-md-2">
-                        <button class="btn btn-primary btn-sm w-100" onclick="chooseComponent('${tipo}', ${componente.id})">
-                            Seleccionar
-                        </button>
-                    </div>
-                </div>
-            </div>
-        `;
-        optionsContainer.appendChild(componentCard);
-    };
-
-    modal.show();
-}
-
-// Elegir componente específico
-function chooseComponent(tipo, componenteId) {
-    const componentes = componentsData[tipo] || [];
-    const componente = componentes.find(c => c.id === componenteId);
-
-    if (componente) {
-        currentBuild[tipo] = componente;
-        updateComponentSlot(tipo, componente);
-        updateTotalPrice();
-        updateRecommendations();
-
-        // Cerrar modal
-        const modal = bootstrap.Modal.getInstance(document.getElementById('componentModal'));
-        modal.hide();
-
-        // Verificar si la build está completa
-        checkBuildComplete();
-    }
-}
-
-// Actualizar slot de componente
-function updateComponentSlot(tipo, componente) {
-    const slotContent = document.getElementById(`${tipo.toLowerCase()}-content`);
-
-    if (!componente) {
-        const labels = { CPU: 'un procesador', GPU: 'una tarjeta gráfica', RAM: 'memoria RAM', Motherboard: 'una placa base' };
-        slotContent.innerHTML = `<p class="text-muted">Selecciona ${labels[tipo] || 'un componente'}</p>`;
-        return;
-    }
-
-    const imagen = componente.imagen || '/static/img/placeholder.png';
-    slotContent.innerHTML = `
-        <div class="d-flex align-items-center">
-            <img src="${escapeHtml(imagen)}" class="img-thumbnail me-3" style="width: 50px; height: 50px;" alt="${escapeHtml(componente.modelo)}">
-            <div class="flex-grow-1">
-                <h6 class="mb-1">${escapeHtml(componente.marca)} ${escapeHtml(componente.modelo)}</h6>
-                <p class="text-primary mb-0">$${componente.precio}</p>
-            </div>
-            <button class="btn btn-sm btn-outline-danger" onclick="removeComponent('${tipo}')">
-                <i class="fas fa-times"></i>
-            </button>
-        </div>
-    `;
-}
-
-// Remover componente
-function removeComponent(tipo) {
-    currentBuild[tipo] = null;
-    updateComponentSlot(tipo, null);
-    updateTotalPrice();
-    updateRecommendations();
-    checkBuildComplete();
-}
-
-// Actualizar precio total
-function updateTotalPrice() {
-    const total = Object.values(currentBuild)
-        .filter(componente => componente !== null)
-        .reduce((sum, componente) => sum + componente.precio, 0);
-
-    document.getElementById('total-price').textContent = `$${total.toFixed(2)}`;
-}
-
-// Verificar si la build está completa
-function checkBuildComplete() {
-    const completedComponents = Object.values(currentBuild).filter(c => c !== null).length;
-    const finalizeBtn = document.getElementById('finalize-build-btn');
-    finalizeBtn.disabled = completedComponents < 3;
-    updatePerformanceLevel();
-}
-
-// Actualizar nivel de rendimiento estimado
-function updatePerformanceLevel() {
-    const cpu = currentBuild.CPU;
-    const gpu = currentBuild.GPU;
-    const ram = currentBuild.RAM;
-    if (!cpu && !gpu) {
-        document.getElementById('performance-level').textContent = 'Sin componentes';
-        return;
-    }
-    const cpuScore = cpu ? (cpu.benchmark_score || 0) : 0;
-    const gpuScore = gpu ? (gpu.benchmark_score || 0) : 0;
-    const ramCap = ram && ram.especificaciones && ram.especificaciones.capacidad
-        ? Number.parseInt(ram.especificaciones.capacidad) || 8 : 8;
-    const total = (gpuScore * 0.5) + (cpuScore * 0.35) + (ramCap * 100 * 0.15);
-    let tier;
-    if (total >= 15000)      tier = 'Ultra High-End (4K)';
-    else if (total >= 10000) tier = 'High-End (1440p Ultra)';
-    else if (total >= 7000)  tier = 'Mid-High (1080p Ultra)';
-    else if (total >= 4000)  tier = 'Mid-Range (1080p Medium)';
-    else if (total > 0)      tier = 'Entry Level';
-    else                     tier = 'Sin datos de benchmark';
-    document.getElementById('performance-level').textContent = tier;
-}
-
-// Auto-recomendación
-function autoRecommend() {
-    const budget = Number.parseInt(document.getElementById('budget-select').value);
-    const tipos = ['CPU', 'GPU', 'RAM', 'Motherboard'];
-    for (const tipo of tipos) {
-        if (!currentBuild[tipo]) {
-            const lista = componentsData[tipo] || [];
-            let recommended;
-            switch (tipo) {
-                case 'CPU':
-                    recommended = recommendCPU(budget, lista);
-                    break;
-                case 'GPU':
-                    recommended = recommendGPU(budget, lista);
-                    break;
-                case 'RAM':
-                    recommended = lista.find(c =>
-                        c.especificaciones && c.especificaciones.capacidad === '16 GB'
-                    ) || lista.find(c =>
-                        c.especificaciones && c.especificaciones.capacidad === '16GB'
-                    ) || lista[0];
-                    break;
-                case 'Motherboard':
-                    recommended = lista.find(c =>
-                        c.socket === 'AM4' || c.socket === 'LGA1700' || c.socket === 'LGA 1700'
-                    ) || lista[0];
-                    break;
-            }
-            if (recommended) {
-                chooseComponent(tipo, recommended.id);
-            }
-        }
-    }
-}
-
-function recommendCPU(budget, componentes) {
-    if (budget >= 1500) {
-        return componentes.find(c => c.marca === 'AMD' && c.modelo.includes('7600'))
-            || componentes.find(c => c.marca === 'Intel' && c.modelo.includes('12400'));
-    }
-    return componentes.find(c => c.marca === 'Intel' && c.modelo.includes('12400'));
-}
-
-function recommendGPU(budget, componentes) {
-    if (budget > 2000) {
-        return componentes.find(c => c.marca === 'NVIDIA' && c.modelo.includes('4070')) || componentes[0];
-    }
-    if (budget > 1200) {
-        return componentes.find(c => c.marca === 'NVIDIA' && c.modelo.includes('4060')) || componentes[0];
-    }
-    return componentes.find(c => c.marca === 'NVIDIA' && c.modelo.includes('3060')) || componentes[0];
-}
-
-// Actualizar recomendaciones
-function updateRecommendations() {
-    const container = document.getElementById('recommendations-container');
-    const completedComponents = Object.values(currentBuild).filter(c => c !== null).length;
-
-    if (completedComponents === 0) {
-        container.innerHTML = `
-            <div class="col-12 text-center">
-                <p class="text-muted mb-3">Selecciona componentes o usa auto-recomendación para ver sugerencias</p>
-            </div>
-        `;
-        return;
-    }
-
-    let recommendations = [];
-
-    if (currentBuild.CPU && currentBuild.GPU) {
-        const cpuScore = currentBuild.CPU.benchmark_score || 0;
-        const gpuScore = currentBuild.GPU.benchmark_score || 0;
-        const ratio = cpuScore > 0 && gpuScore > 0 ? Math.max(cpuScore, gpuScore) / Math.min(cpuScore, gpuScore) : 1;
-        const alertType = ratio > 2 ? 'warning' : 'success';
-        const msg = ratio > 2
-            ? `Hay un desequilibrio entre tu CPU y GPU (ratio ${ratio.toFixed(1)}x). Puede haber cuello de botella.`
-            : '¡Excelente combinación! Tu CPU y GPU están bien balanceados.';
-        recommendations.push(`
-            <div class="col-md-6">
-                <div class="alert alert-${alertType}">
-                    <i class="fas fa-${alertType === 'warning' ? 'exclamation-triangle' : 'thumbs-up'} me-2"></i>
-                    <strong>${msg}</strong>
-                </div>
-            </div>
-        `);
-    }
-
-    if (currentBuild.RAM) {
-        const ramCap = currentBuild.RAM.especificaciones && currentBuild.RAM.especificaciones.capacidad
-            ? currentBuild.RAM.especificaciones.capacidad
-            : '0';
-        const ramGb = Number.parseInt(ramCap) || 0;
-        if (ramGb >= 16) {
-            recommendations.push(`
-                <div class="col-md-6">
-                    <div class="alert alert-info">
-                        <i class="fas fa-memory me-2"></i>
-                        <strong>Buena cantidad de RAM</strong> — ${ramGb}GB es ideal para gaming moderno.
-                    </div>
-                </div>
-            `);
-        } else if (ramGb > 0) {
-            recommendations.push(`
-                <div class="col-md-6">
-                    <div class="alert alert-warning">
-                        <i class="fas fa-memory me-2"></i>
-                        <strong>RAM limitada</strong> — Solo ${ramGb}GB. Se recomiendan 16GB para gaming.
-                    </div>
-                </div>
-            `);
-        }
-    }
-
-    if (recommendations.length === 0) {
-        recommendations.push(`<div class="col-12 text-center"><p class="text-muted">Agrega más componentes para ver recomendaciones.</p></div>`);
-    }
-
-    container.innerHTML = recommendations.join('');
-}
-
-// Finalizar build — agregar todos los componentes al carrito
-async function finalizeBuild() {
-    const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
-    const components = Object.values(currentBuild).filter(c => c !== null);
-    const btn = document.getElementById('finalize-build-btn');
-    btn.disabled = true;
-    btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Agregando...';
-
-    try {
-        for (const comp of components) {
-            const resp = await fetch('/carrito/agregar', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'X-CSRFToken': csrfToken
-                },
-                body: JSON.stringify({
-                    product_type: 'hardware',
-                    product_id: comp.id,
-                    quantity: 1
-                })
-            });
-            if (!resp.ok && resp.status !== 400) {
-                // 400 puede ser stock insuficiente o ya en carrito — no es fatal
-                const err = await resp.json();
-                showToast(`Error con ${comp.modelo}: ${err.message || resp.statusText}`, 'danger');
-            }
-        }
-        window.location.href = '/carrito';
-    } catch (error) {
-        showToast('Error al agregar componentes al carrito', 'danger');
-        btn.disabled = false;
-        btn.innerHTML = '<i class="fas fa-shopping-cart me-2"></i>Finalizar Compra';
-    }
-}
-
-// showToast() ahora es global, definida una sola vez en static/js/main.js.
-</script>
+<script>window.PC_SLOTS = {{ slots|tojson }};</script>
+<script src="{{ url_for('static', filename='js/compatibilidad.js') }}"></script>
+<script src="{{ url_for('static', filename='js/pc_builder.js') }}"></script>
 {% endblock %}
 
 {% block extra_css %}

@@ -1,5 +1,8 @@
 from flask import Blueprint, render_template, request, jsonify, current_app
+from extensions import db
 from models.database_models import Hardware
+from utils.compatibilidad import CAMPOS_POR_TIPO, estado_general, verificar_configuracion
+from utils.hardware_engine import detectar_cuello, nivel_del_sistema, puntuacion_total, recomendaciones, sistema_de
 
 hardware_bp = Blueprint('hardware', __name__)
 
@@ -33,20 +36,77 @@ def hardware_por_categoria(categoria):
 
     return render_template('hardware_category.html', componentes=componentes, categoria=categoria)
 
+# Espacios del Configurador de PC: el orden, el ícono y el texto vacío de cada tipo (el campo sale de CAMPOS_POR_TIPO).
+_ESPACIOS = (
+    ('CPU', 'Procesador', 'microchip', 'Selecciona un procesador'),
+    ('GPU', 'Tarjeta Gráfica', 'video', 'Selecciona una tarjeta gráfica'),
+    ('RAM', 'Memoria RAM', 'memory', 'Selecciona memoria RAM'),
+    ('Motherboard', 'Placa Base', 'server', 'Selecciona una placa base'),
+    ('Fuente de poder', 'Fuente de Poder', 'plug', 'Selecciona una fuente de poder'),
+    ('Refrigeración', 'Refrigeración', 'fan', 'Selecciona un enfriador'),
+    ('Gabinete', 'Gabinete', 'box', 'Selecciona un gabinete'),
+)
+
+
+def espacios_del_configurador():
+    return [{'tipo': tipo, 'campo': CAMPOS_POR_TIPO[tipo], 'etiqueta': etiqueta, 'icono': icono, 'texto': texto}
+            for tipo, etiqueta, icono, texto in _ESPACIOS]
+
+
 @hardware_bp.route('/configurador-pc')
 def configurador_pc():
     """Página del configurador de PC interactivo"""
-    hardware = Hardware.get_all_hardware()
+    return render_template('pc_builder.html', slots=espacios_del_configurador())
 
-    # Organizar por categorías para el configurador
-    categorias = {
-        'CPU': [h for h in hardware if h.tipo == 'CPU'],
-        'GPU': [h for h in hardware if h.tipo == 'GPU'],
-        'RAM': [h for h in hardware if h.tipo == 'RAM'],
-        'Motherboard': [h for h in hardware if h.tipo == 'Motherboard']
-    }
 
-    return render_template('pc_builder.html', categorias=categorias)
+@hardware_bp.route('/api/verificar-configuracion', methods=['POST'])
+def api_verificar_configuracion():
+    """Compatibilidad de las piezas elegidas más el rendimiento del equipo (ambos salen del motor único).
+
+    Recibe cualquier subconjunto de los campos de CAMPOS_POR_TIPO (cpu_id, gpu_id, ram_id, placa_id, fuente_id,
+    enfriador_id, gabinete_id) y verifica cada par de piezas que se pueda evaluar.
+    """
+    datos = request.get_json(silent=True)
+    if not isinstance(datos, dict):
+        return jsonify({'error': 'No se recibieron datos'}), 400
+
+    piezas = {}
+    for tipo, campo in CAMPOS_POR_TIPO.items():
+        valor = datos.get(campo)
+        if valor in (None, ''):
+            continue
+        try:
+            identificador = int(valor)
+        except (TypeError, ValueError):
+            return jsonify({'error': f'Identificador inválido en {campo}'}), 400
+        componente = db.session.get(Hardware, identificador)
+        if componente is None:
+            return jsonify({'error': f'Componente no encontrado en {campo}'}), 404
+        if componente.tipo != tipo:
+            return jsonify({'error': f'El componente de {campo} no es del tipo {tipo}'}), 400
+        piezas[campo] = componente
+    if not piezas:
+        return jsonify({'error': 'Elige al menos un componente'}), 400
+
+    try:
+        verificaciones = verificar_configuracion(
+            cpu=piezas.get('cpu_id'), gpu=piezas.get('gpu_id'), ram=piezas.get('ram_id'), placa=piezas.get('placa_id'),
+            fuente=piezas.get('fuente_id'), enfriador=piezas.get('enfriador_id'), gabinete=piezas.get('gabinete_id'))
+        sistema = sistema_de(piezas.get('cpu_id'), piezas.get('gpu_id'), piezas.get('ram_id'))
+        cuello = detectar_cuello(sistema)
+        total = puntuacion_total(sistema)
+        return jsonify({
+            'success': True,
+            'estado': estado_general(verificaciones),
+            'verificaciones': verificaciones,
+            'rendimiento': {'total': total, 'nivel': nivel_del_sistema(total), 'faltantes': sistema.faltantes},
+            'cuello': cuello,
+            'recomendaciones': recomendaciones(sistema, cuello),
+        })
+    except Exception:
+        current_app.logger.exception('Error en api_verificar_configuracion')
+        return jsonify({'error': 'Error del servidor al verificar la configuración'}), 500
+
 
 @hardware_bp.route('/api/hardware/tipos')
 def api_tipos_hardware():
