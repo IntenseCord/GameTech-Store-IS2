@@ -197,7 +197,7 @@ class Hardware(db.Model):
             return 0
         
         specs = self.get_especificaciones()
-        capacity_str = specs.get('capacidad', '8 GB')
+        capacity_str = specs.get('capacidad', '')
 
         # Extraer número: "16 GB" -> 16. str() porque 'especificaciones' es
         # JSON de texto libre sin validar esquema (admin.py solo exige que no
@@ -207,7 +207,15 @@ class Hardware(db.Model):
         match = re.search(r'(\d+)\s*GB', str(capacity_str), re.IGNORECASE)
         if match:
             return int(match.group(1))
-        return 8  # Default
+        return 0  # sin dato: el motor lo trata como "sin datos" en vez de inventar una capacidad
+
+    def get_ram_speed_mhz(self):
+        """Velocidad de la RAM en MHz (MT/s), o 0 si no hay dato."""
+        if self.tipo != 'RAM':
+            return 0
+        import re
+        match = re.search(r'\d+', str(self.get_especificaciones().get('frecuencia', '')))
+        return int(match.group()) if match else 0
     
     def get_vram_gb(self):
         """Obtener VRAM de GPU"""

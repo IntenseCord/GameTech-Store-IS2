@@ -78,27 +78,23 @@
                 <h5 class="mb-0"><i class="fas fa-search me-2"></i>Verificar Compatibilidad con tu Setup</h5>
             </div>
             <div class="card-body">
+                {% if campo %}
                 <p class="text-muted mb-4">
-                    Ingresa las especificaciones de tu PC actual para verificar si este componente es compatible y mejorará tu experiencia gaming.
+                    Elige las piezas que ya tienes o planeas comprar y verifica si este componente encaja con ellas.
                 </p>
 
                 <div class="row g-3 mb-4">
+                    {% for otro in otros %}
                     <div class="col-md-6">
-                        <label for="current-cpu" class="form-label">Tu procesador actual</label>
-                        <input type="text" class="form-control" id="current-cpu" placeholder="Ej: Intel Core i5-10400F">
+                        <label for="otro-{{ otro.campo }}" class="form-label">{{ otro.etiqueta }}</label>
+                        <select class="form-select" id="otro-{{ otro.campo }}" data-campo="{{ otro.campo }}">
+                            <option value="">No lo tengo / no sé</option>
+                            {% for pieza in otro.piezas %}
+                            <option value="{{ pieza.id }}">{{ pieza.marca }} {{ pieza.modelo }}</option>
+                            {% endfor %}
+                        </select>
                     </div>
-                    <div class="col-md-6">
-                        <label for="current-gpu" class="form-label">Tu tarjeta gráfica actual</label>
-                        <input type="text" class="form-control" id="current-gpu" placeholder="Ej: NVIDIA GTX 1660">
-                    </div>
-                    <div class="col-md-6">
-                        <label for="current-ram" class="form-label">Tu memoria RAM</label>
-                        <input type="text" class="form-control" id="current-ram" placeholder="Ej: 16 GB DDR4">
-                    </div>
-                    <div class="col-md-6">
-                        <label for="current-motherboard" class="form-label">Tu placa base</label>
-                        <input type="text" class="form-control" id="current-motherboard" placeholder="Ej: ASUS B450-F">
-                    </div>
+                    {% endfor %}
                 </div>
 
                 <button class="btn btn-primary" id="check-compatibility-btn">
@@ -108,6 +104,9 @@
                 <div id="compatibility-result" class="mt-4" style="display: none;">
                     <!-- Resultados se mostrarán aquí -->
                 </div>
+                {% else %}
+                <p class="text-muted mb-0">Este tipo de componente todavía no tiene verificación de compatibilidad.</p>
+                {% endif %}
             </div>
         </div>
     </div>
@@ -165,13 +164,10 @@
 {% endblock %}
 
 {% block extra_js %}
+<script src="{{ url_for('static', filename='js/compatibilidad.js') }}"></script>
 <script>
 document.addEventListener('DOMContentLoaded', function() {
-    // Botones de acción
-    document.getElementById('add-to-cart-btn').addEventListener('click', function() {
-        showToast(`${ {{ componente.marca | tojson }} } ${ {{ componente.modelo | tojson }} } agregado al carrito`, 'success');
-    });
-
+    // "Agregar al carrito" lo maneja static/js/main.js (por clase); aquí solo los botones que tienen id.
     document.getElementById('add-to-wishlist-btn').addEventListener('click', function() {
         showToast('Agregado a lista de deseos', 'info');
     });
@@ -180,73 +176,35 @@ document.addEventListener('DOMContentLoaded', function() {
         showToast('Agregado para comparación', 'info');
     });
 
-    // Verificador de compatibilidad
-    document.getElementById('check-compatibility-btn').addEventListener('click', function() {
-        const currentCpu = document.getElementById('current-cpu').value;
-        const currentGpu = document.getElementById('current-gpu').value;
-        const currentRam = document.getElementById('current-ram').value;
-        const currentMotherboard = document.getElementById('current-motherboard').value;
-
-        if (!currentCpu && !currentGpu && !currentRam && !currentMotherboard) {
-            alert('Por favor ingresa al menos una especificación de tu PC actual.');
+    {% if campo %}
+    // Verificador de compatibilidad: lo decide el servidor (motor único de hardware)
+    const TIPO = {{ componente.tipo | tojson }};
+    const CAMPO = {{ campo | tojson }};
+    document.getElementById('check-compatibility-btn').addEventListener('click', async function() {
+        const cuerpo = { [CAMPO]: {{ componente.id }} };
+        for (const selector of document.querySelectorAll('select[data-campo]')) {
+            if (selector.value) {
+                cuerpo[selector.dataset.campo] = Number(selector.value);
+            }
+        }
+        const resultado = document.getElementById('compatibility-result');
+        resultado.style.display = 'block';
+        if (Object.keys(cuerpo).length === 1) {
+            resultado.innerHTML = '<div class="alert alert-info mb-0">Elige al menos una pieza para verificar.</div>';
             return;
         }
-
-        const resultDiv = document.getElementById('compatibility-result');
-        resultDiv.style.display = 'block';
-        resultDiv.innerHTML = '<div class="text-center"><div class="spinner-border text-primary" role="status"></div></div>';
-
-        // Simular verificación de compatibilidad
-        setTimeout(() => {
-            const componenteTipo = "{{ componente.tipo }}";
-            let compatible = true;
-            let mensaje = '';
-
-            switch(componenteTipo) {
-                case 'CPU':
-                    if (currentMotherboard && !currentMotherboard.toLowerCase().includes('intel') && "{{ componente.marca }}" === 'Intel') {
-                        compatible = false;
-                        mensaje = 'Tu placa base no es compatible con procesadores Intel.';
-                    } else {
-                        mensaje = 'El procesador es compatible con tu setup actual.';
-                    }
-                    break;
-                case 'GPU':
-                    mensaje = 'La tarjeta gráfica es compatible con la mayoría de sistemas modernos.';
-                    break;
-                case 'RAM':
-                    mensaje = 'La memoria RAM es compatible con la mayoría de placas base DDR4.';
-                    break;
-                case 'Motherboard':
-                    mensaje = 'Verifica que el socket sea compatible con tu procesador.';
-                    break;
-                default:
-                    mensaje = 'Componente compatible con tu sistema.';
-            }
-
-            if (compatible) {
-                resultDiv.innerHTML = `
-                    <div class="alert alert-success">
-                        <i class="fas fa-check-circle me-2"></i>
-                        <strong>¡Compatible!</strong> ${mensaje}
-                    </div>
-                `;
-            } else {
-                resultDiv.innerHTML = `
-                    <div class="alert alert-warning">
-                        <i class="fas fa-exclamation-triangle me-2"></i>
-                        <strong>Posible incompatibilidad:</strong> ${mensaje}
-                    </div>
-                `;
-            }
-        }, 1500);
+        resultado.innerHTML = '<div class="text-center"><div class="spinner-border text-primary" role="status"></div></div>';
+        try {
+            const datos = await verificarConfiguracion(cuerpo);
+            resultado.innerHTML = htmlVerificaciones(datos.verificaciones, TIPO);
+        } catch (error) {
+            resultado.innerHTML = '<div class="alert alert-danger mb-0">No se pudo verificar la compatibilidad. Inténtalo de nuevo.</div>';
+        }
     });
-
-    // showToast() ahora es global, definida una sola vez en static/js/main.js.
+    {% endif %}
 });
 </script>
 {% endblock %}
-
 {% block extra_css %}
 <style>
 .specs-section {

@@ -1,4 +1,5 @@
 from flask import Blueprint, render_template, request, jsonify
+from utils.compatibilidad import CAMPOS_POR_TIPO
 from models.database_models import Game, GameRequirements, Hardware
 from utils.hardware_engine import SIN_DATOS, Sistema, evaluar_juego, sistema_de
 from utils.hardware_resolver import ram_gb_de_texto, resolver_componente
@@ -91,7 +92,11 @@ def hardware_detalle(hardware_id):
         # Obtener hardware relacionado (mismo tipo)
         hardware_relacionado = Hardware.query.filter_by(tipo=componente.tipo).filter(Hardware.id != hardware_id).limit(3).all()
 
-        return render_template('hardware_detail.html', componente=componente, hardware_relacionado=hardware_relacionado)
+        from controllers.hardware import espacios_del_configurador
+        otros = [{**espacio, 'piezas': Hardware.get_hardware_by_tipo(espacio['tipo'])}
+                 for espacio in espacios_del_configurador() if espacio['tipo'] != componente.tipo]
+        return render_template('hardware_detail.html', componente=componente, hardware_relacionado=hardware_relacionado,
+                               campo=CAMPOS_POR_TIPO.get(componente.tipo), otros=otros)
     except Exception as e:
         from flask import current_app
         current_app.logger.error(f'Error en hardware_detalle: {str(e)}')

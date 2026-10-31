@@ -15,6 +15,10 @@ SIN_DATOS = 'sin_datos'
 # --- puntuación total del sistema: GPU 50 %, CPU 35 %, RAM 15 % (100 puntos por GB) ---
 PESO_GPU, PESO_CPU, PESO_RAM = 50, 35, 15          # en porcentaje: se calcula con enteros para no depender de decimales
 PUNTOS_POR_GB_RAM = 100
+# La velocidad de la RAM ajusta sus puntos: 3200 MT/s (DDR4 estándar) = 100 %, acotado entre 80 % y 125 % para que la RAM no domine.
+# Criterio del proyecto (como el reparto 50/35/15): no hay una fórmula publicada. Sin dato de velocidad el factor es neutro (100 %).
+RAM_MHZ_REFERENCIA = 3200
+FACTOR_RAM_MIN, FACTOR_RAM_MAX = 80, 125
 NIVELES_DEL_SISTEMA = (
     (15000, 'Ultra High-End (4K Ultra)'),
     (10000, 'High-End (1440p Ultra)'),
@@ -53,6 +57,8 @@ class Sistema:
     gpu: int | None = None
     ram_gb: int | None = None
     desconocidos: tuple = ()
+    vram_gb: int | None = None      # VRAM de la GPU: limita la calidad (un dato que falta no bloquea)
+    ram_mhz: int | None = None      # velocidad de la RAM: ajusta su peso en la puntuación total
 
     @property
     def faltantes(self):
@@ -71,20 +77,38 @@ def _ram_gb(componente):
     return gb if gb and gb > 0 else None
 
 
+def _vram_gb(gpu):
+    gb = getattr(gpu, 'vram_gb', None)
+    return gb if gb and gb > 0 else None
+
+
+def _ram_mhz(ram):
+    leer = getattr(ram, 'get_ram_speed_mhz', None)
+    mhz = leer() if callable(leer) else None
+    return mhz if mhz and mhz > 0 else None
+
+
 def sistema_de(cpu=None, gpu=None, ram=None):
     """Construye el Sistema a partir de objetos Hardware (None = no indicado; sin benchmark = desconocido)."""
     sistema = Sistema(cpu=_puntuacion(cpu), gpu=_puntuacion(gpu), ram_gb=_ram_gb(ram))
     desconocidos = tuple(n for n, objeto, valor in (('cpu', cpu, sistema.cpu), ('gpu', gpu, sistema.gpu), ('ram', ram, sistema.ram_gb))
                          if objeto is not None and valor is None)
-    return Sistema(sistema.cpu, sistema.gpu, sistema.ram_gb, desconocidos)
+    return Sistema(sistema.cpu, sistema.gpu, sistema.ram_gb, desconocidos, vram_gb=_vram_gb(gpu), ram_mhz=_ram_mhz(ram))
 
 
 # ------------------------------------------------------------------ sistema
+def _factor_velocidad_ram(mhz):
+    """Porcentaje (80-125) que ajusta los puntos de la RAM según su velocidad; 100 si no se conoce."""
+    if not mhz:
+        return 100
+    return max(FACTOR_RAM_MIN, min(FACTOR_RAM_MAX, mhz * 100 // RAM_MHZ_REFERENCIA))
+
+
 def puntuacion_total(sistema):
     """Puntuación general, o None si falta la CPU o la GPU."""
     if sistema.cpu is None or sistema.gpu is None:
         return None
-    ram_puntos = (sistema.ram_gb or 0) * PUNTOS_POR_GB_RAM
+    ram_puntos = (sistema.ram_gb or 0) * PUNTOS_POR_GB_RAM * _factor_velocidad_ram(sistema.ram_mhz) // 100
     return (sistema.gpu * PESO_GPU + sistema.cpu * PESO_CPU + ram_puntos * PESO_RAM) // 100
 
 
@@ -103,12 +127,29 @@ def _sin_datos(motivo):
             'limitante': None, 'motivo': motivo, 'parcial': False}
 
 
-def _por_encima(sistema, nivel, req):
+def _vram_exigida(req, nivel):
+    return getattr(req, f'{nivel}_vram_gb', None) or 0
+
+
+def _por_encima(sistema, nivel, req, con_vram=True):
     """¿El equipo cumple, con los componentes que se conocen, los requisitos de ese nivel?"""
-    pares = ((sistema.cpu, getattr(req, f'{nivel}_cpu_score')),
+    pares = [(sistema.cpu, getattr(req, f'{nivel}_cpu_score')),
              (sistema.gpu, getattr(req, f'{nivel}_gpu_score')),
-             (sistema.ram_gb, getattr(req, f'{nivel}_ram_gb')))
+             (sistema.ram_gb, getattr(req, f'{nivel}_ram_gb'))]
+    if con_vram:
+        pares.append((sistema.vram_gb, _vram_exigida(req, nivel)))
     return all(valor is None or valor >= exigido for valor, exigido in pares)
+
+
+def _frena_la_vram(sistema, calidad, req):
+    """VRAM que pide el siguiente nivel si SOLO ella impide alcanzarlo (los demás componentes ya lo cumplen), o None."""
+    siguiente = {'high': 'ultra', 'medium': 'rec'}.get(calidad)
+    if siguiente is None or sistema.vram_gb is None:
+        return None
+    exigida = _vram_exigida(req, siguiente)
+    if sistema.vram_gb >= exigida or not _por_encima(sistema, siguiente, req, con_vram=False):
+        return None
+    return exigida
 
 
 def _calidad(sistema, req):
@@ -166,6 +207,10 @@ def _fallos_del_minimo(sistema, req):
     if sistema.ram_gb is not None and sistema.ram_gb < req.min_ram_gb:
         fallos.append(('ram', sistema.ram_gb / req.min_ram_gb,
                        f'RAM insuficiente (requiere {req.min_ram_gb}GB, tienes {sistema.ram_gb}GB)'))
+    minima_vram = _vram_exigida(req, 'min')
+    if sistema.vram_gb is not None and sistema.vram_gb < minima_vram:
+        fallos.append(('vram', sistema.vram_gb / minima_vram,
+                       f'VRAM insuficiente (requiere {minima_vram}GB, tienes {sistema.vram_gb}GB)'))
     return fallos
 
 
@@ -194,10 +239,16 @@ def evaluar_juego(sistema, req):
 
     calidad = _calidad(sistema, req)
     exigido_cpu, exigido_gpu, exigido_ram = _requisitos_del_nivel(calidad, req)
+    vram_necesaria = _frena_la_vram(sistema, calidad, req)
+    if vram_necesaria:
+        limitante = 'vram'
+        motivo = f'VRAM insuficiente para el siguiente nivel (requiere {vram_necesaria}GB, tienes {sistema.vram_gb}GB)'
+    else:
+        limitante = _limitante_si_corre(sistema, exigido_cpu, exigido_gpu, exigido_ram)
+        motivo = ''
     return {'estado': 'ok', 'puede_correr': True, 'calidad': calidad,
             'fps': _fps(sistema, calidad, exigido_cpu, exigido_gpu),
-            'limitante': _limitante_si_corre(sistema, exigido_cpu, exigido_gpu, exigido_ram),
-            'motivo': '', 'parcial': parcial}
+            'limitante': limitante, 'motivo': motivo, 'parcial': parcial}
 
 
 CATEGORIA_POR_CALIDAD = {'ultra': 'can_run_ultra', 'high': 'can_run_high', 'medium': 'can_run_medium',

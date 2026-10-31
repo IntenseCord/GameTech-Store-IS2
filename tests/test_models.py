@@ -152,5 +152,5 @@ def test_get_ram_capacity_gb_no_crashea_si_capacidad_no_es_string(app_context):
 
     # Sin el patrón "N GB" no hay forma de extraer un número confiable
     # (16 podría ser GB, MB, cualquier otra unidad) -- lo importante es que
-    # no crashee y caiga al default sano, no que adivine el valor.
-    assert ram.get_ram_capacity_gb() == 8
+    # no crashee y no adivine el valor: 0 = sin dato (antes inventaba 8 GB, hallazgo 47).
+    assert ram.get_ram_capacity_gb() == 0
