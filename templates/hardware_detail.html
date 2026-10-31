@@ -26,10 +26,16 @@
                         <div class="specs-section mb-4">
                             <h5 class="mb-3">Especificaciones Técnicas</h5>
                             <div class="specs-grid">
+                                {% set etiquetas = {'tdp_max_w': 'TDP máximo (W)', 'potencia_w': 'Potencia (W)', 'potencia_maxima_w': 'Consumo máximo (W)',
+                                                    'psu_recomendada_w': 'Fuente recomendada (W)', 'largo_mm': 'Largo (mm)', 'altura_mm': 'Altura (mm)',
+                                                    'radiador_mm': 'Radiador (mm)', 'radiador_max_mm': 'Radiador máximo (mm)',
+                                                    'largo_max_gpu_mm': 'Largo máximo de GPU (mm)', 'altura_max_cooler_mm': 'Altura máxima del enfriador (mm)',
+                                                    'formatos_placa': 'Placas compatibles', 'tipos_memoria': 'Memoria compatible',
+                                                    'tipo_memoria': 'Tipo de memoria', 'sockets': 'Sockets compatibles'} %}
                                 {% for spec, value in componente.get_especificaciones().items() %}
                                 <div class="spec-item">
-                                    <span class="spec-label">{{ spec.replace('_', ' ').title() }}:</span>
-                                    <span class="spec-value">{{ value }}</span>
+                                    <span class="spec-label">{{ etiquetas.get(spec, spec.replace('_', ' ').title()) }}:</span>
+                                    <span class="spec-value">{% if value is iterable and value is not string %}{{ value|join(', ') }}{% else %}{{ value }}{% endif %}</span>
                                 </div>
                                 {% endfor %}
                             </div>

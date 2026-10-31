@@ -10,7 +10,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from app import app, db
 from models.database_models import Hardware
-from utils.benchmark_escala import PUNTAJE_RX_7600
+from utils.benchmark_escala import PUNTAJE_RX_7600, puntaje_cpu, puntaje_gpu
 
 # Datos de benchmark reales (aproximados basados en PassMark y 3DMark)
 BENCHMARK_DATA = {
@@ -18,7 +18,7 @@ BENCHMARK_DATA = {
     'CPU': {
         'i9-13900K': {'score': 18000, 'cores': 24, 'threads': 32, 'freq': 3.0, 'tdp': 125},
         'i9-12900K': {'score': 16500, 'cores': 16, 'threads': 24, 'freq': 3.2, 'tdp': 125},
-        'i7-13700K': {'score': 15000, 'cores': 16, 'threads': 24, 'freq': 3.4, 'tdp': 125},
+        'i7-13700K': {'score': puntaje_cpu('Core i7-13700K'), 'cores': 16, 'threads': 24, 'freq': 3.4, 'tdp': 125},
         'i7-12700K': {'score': 13500, 'cores': 12, 'threads': 20, 'freq': 3.6, 'tdp': 125},
         'i5-13600K': {'score': 12000, 'cores': 14, 'threads': 20, 'freq': 3.5, 'tdp': 125},
         'i5-12600K': {'score': 10500, 'cores': 10, 'threads': 16, 'freq': 3.7, 'tdp': 125},
@@ -31,7 +31,7 @@ BENCHMARK_DATA = {
         'Ryzen 7 5800X3D': {'score': 13000, 'cores': 8, 'threads': 16, 'freq': 3.4, 'tdp': 105},
         'Ryzen 5 7600X': {'score': 10500, 'cores': 6, 'threads': 12, 'freq': 4.7, 'tdp': 105},
         'Ryzen 5 5600X': {'score': 9500, 'cores': 6, 'threads': 12, 'freq': 3.7, 'tdp': 65},
-        'Ryzen 5 5600': {'score': 9000, 'cores': 6, 'threads': 12, 'freq': 3.5, 'tdp': 65},
+        'Ryzen 5 5600': {'score': puntaje_cpu('Ryzen 5 5600'), 'cores': 6, 'threads': 12, 'freq': 3.5, 'tdp': 65},
     },
     
     # GPUs - Basado en 3DMark Time Spy Graphics Score
@@ -39,7 +39,7 @@ BENCHMARK_DATA = {
         'RTX 4090': {'score': 25000, 'vram': 24, 'tdp': 450},
         'RTX 4080': {'score': 22000, 'vram': 16, 'tdp': 320},
         'RTX 4070 Ti': {'score': 18000, 'vram': 12, 'tdp': 285},
-        'RTX 4070': {'score': 16000, 'vram': 12, 'tdp': 200},
+        'RTX 4070': {'score': puntaje_gpu('GeForce RTX 4070'), 'vram': 12, 'tdp': 200},
         'RTX 4060 Ti': {'score': 14000, 'vram': 8, 'tdp': 160},
         'RTX 4060': {'score': 12000, 'vram': 8, 'tdp': 115},
         
@@ -62,7 +62,7 @@ BENCHMARK_DATA = {
         
         'GTX 1660 Super': {'score': 7000, 'vram': 6, 'tdp': 125},
         'GTX 1660': {'score': 6500, 'vram': 6, 'tdp': 120},
-        'GTX 1650': {'score': 5000, 'vram': 4, 'tdp': 75},
+        'GTX 1650': {'score': puntaje_gpu('GeForce GTX 1650'), 'vram': 4, 'tdp': 75},
     }
 }
 

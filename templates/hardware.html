@@ -20,6 +20,9 @@
                 <a href="#gpu" class="btn btn-outline-primary" data-category="GPU">Tarjetas Gráficas</a>
                 <a href="#ram" class="btn btn-outline-primary" data-category="RAM">Memoria RAM</a>
                 <a href="#motherboard" class="btn btn-outline-primary" data-category="Motherboard">Placas Base</a>
+                <a href="#fuente" class="btn btn-outline-primary" data-category="Fuente de poder">Fuentes de Poder</a>
+                <a href="#refrigeracion" class="btn btn-outline-primary" data-category="Refrigeración">Refrigeración</a>
+                <a href="#gabinete" class="btn btn-outline-primary" data-category="Gabinete">Gabinetes</a>
             </div>
         </div>
     </div>
@@ -52,6 +55,21 @@
                     {% set specs = componente.get_especificaciones() %}
                     <div class="quick-specs">
                         <small><i class="fas fa-memory me-1"></i>{{ specs.get('capacidad', 'N/A') }}</small>
+                    </div>
+                {% elif componente.tipo == 'Fuente de poder' %}
+                    {% set specs = componente.get_especificaciones() %}
+                    <div class="quick-specs">
+                        <small><i class="fas fa-plug me-1"></i>{{ specs.get('potencia_w', 'N/A') }} W · {{ specs.get('certificacion', '') }}</small>
+                    </div>
+                {% elif componente.tipo == 'Refrigeración' %}
+                    {% set specs = componente.get_especificaciones() %}
+                    <div class="quick-specs">
+                        <small><i class="fas fa-fan me-1"></i>{{ specs.get('tipo', 'N/A') }} · hasta {{ specs.get('tdp_max_w', 'N/A') }} W</small>
+                    </div>
+                {% elif componente.tipo == 'Gabinete' %}
+                    {% set specs = componente.get_especificaciones() %}
+                    <div class="quick-specs">
+                        <small><i class="fas fa-server me-1"></i>{{ specs.get('formatos_placa', [])|join(', ') }}</small>
                     </div>
                 {% endif %}
             </div>
