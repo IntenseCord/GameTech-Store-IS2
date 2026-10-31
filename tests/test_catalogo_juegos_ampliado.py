@@ -174,5 +174,6 @@ def test_el_analizador_incluye_los_ocho_juegos_sin_datos_faltantes(client, app_c
     todos = [j['nombre'] for lista in r['games'].values() for j in lista]
     assert len(todos) == 8 and r['games']['sin_datos'] == [] and r['games']['cannot_run'] == []
     assert NUEVOS <= set(todos)
-    assert [j['nombre'] for j in r['games']['can_run_high']] == ['Cyberpunk 2077']
+    # la RTX 4060 tiene 8 GB de VRAM: Cyberpunk (10 GB), RDR2 y Baldur's Gate 3 (11 GB) no llegan a ultra
+    assert {j['nombre'] for j in r['games']['can_run_high']} == {'Cyberpunk 2077', 'Red Dead Redemption 2', "Baldur's Gate 3"}
     assert GameRequirements.query.count() == 8
