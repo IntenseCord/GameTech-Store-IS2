@@ -25,4 +25,5 @@ def test_puebla_requisitos_de_grand_theft_auto_v(app_context):
 
     requisitos = GameRequirements.get_by_game_id(game.id)
     assert requisitos is not None, 'Grand Theft Auto V debería tener requisitos poblados por el script'
-    assert requisitos.min_cpu_score == 6500
+    # el mínimo oficial (Core 2 Quad Q6600) en la escala única del proyecto
+    assert requisitos.min_cpu_score == 2440
