@@ -1,8 +1,10 @@
 """
 Configuración de la base de datos
 """
+import json
 from datetime import datetime
 from extensions import db
+from utils.catalogo_hardware import CATALOGO_HARDWARE, RENOMBRES
 
 
 def juegos_iniciales():
@@ -121,9 +123,70 @@ def agregar_juegos_faltantes():
     return [j.nombre for j in faltantes]
 
 
+def _hardware_desde_item(item):
+    from models.database_models import Hardware
+    return Hardware(
+        tipo=item['tipo'], marca=item['marca'], modelo=item['modelo'], precio=item['precio'],
+        descripcion=item['descripcion'], imagen=item['imagen'], stock=item['stock'],
+        especificaciones=json.dumps(item['especificaciones'], ensure_ascii=False), **item['columnas'],
+    )
+
+
+def hardware_inicial():
+    """Componentes del catálogo (objetos sin agregar a la sesión)."""
+    return [_hardware_desde_item(item) for item in CATALOGO_HARDWARE]
+
+
+def _completar_hardware(hardware, item):
+    """Completa un componente existente con los datos del catálogo sin tocar precio, stock ni descripción.
+
+    El socket se normaliza siempre ("LGA 1700" -> "LGA1700"); el resto de columnas solo se llenan si están vacías, y a las
+    especificaciones se les agregan las claves que falten (lo que el administrador ya editó se conserva).
+    Devuelve True si cambió algo.
+    """
+    cambio = False
+    for columna, valor in item['columnas'].items():
+        if columna == 'socket' or not getattr(hardware, columna):
+            if getattr(hardware, columna) != valor:
+                setattr(hardware, columna, valor)
+                cambio = True
+    actuales = hardware.get_especificaciones()
+    completas = {**item['especificaciones'], **{k: v for k, v in actuales.items() if k != 'socket'}}
+    if completas != actuales:
+        hardware.especificaciones = json.dumps(completas, ensure_ascii=False)
+        cambio = True
+    return cambio
+
+
+def sincronizar_hardware():
+    """Deja la base con el catálogo completo: agrega lo que falta y completa los datos de compatibilidad de lo existente.
+
+    `seed_database` solo corre con la base vacía. Esta función es idempotente y devuelve
+    {'agregados': [modelos nuevos], 'actualizados': [modelos existentes que cambiaron]}.
+    """
+    from models.database_models import Hardware
+    for anterior, nuevo in RENOMBRES.items():
+        existente = Hardware.query.filter_by(modelo=anterior).first()
+        if existente and not Hardware.query.filter_by(tipo=existente.tipo, modelo=nuevo).first():
+            existente.modelo = nuevo
+    db.session.flush()
+
+    actuales = {(h.tipo, h.modelo): h for h in Hardware.query.all()}
+    agregados, actualizados = [], []
+    for item in CATALOGO_HARDWARE:
+        existente = actuales.get((item['tipo'], item['modelo']))
+        if existente is None:
+            db.session.add(_hardware_desde_item(item))
+            agregados.append(item['modelo'])
+        elif _completar_hardware(existente, item):
+            actualizados.append(item['modelo'])
+    db.session.commit()
+    return {'agregados': agregados, 'actualizados': actualizados}
+
+
 def seed_database():
     """Poblar la base de datos con datos iniciales"""
-    from models.database_models import Game, Hardware, User
+    from models.database_models import Game, User
     from werkzeug.security import generate_password_hash
     from os import environ
     # Crear usuario admin por defecto si no existe
@@ -149,88 +212,7 @@ def seed_database():
         db.session.add(juego)
     
     # Agregar hardware
-    hardware_items = [
-        Hardware(
-            tipo="CPU",
-            marca="Intel",
-            modelo="Core i5-12400F",
-            precio=199.99,
-            descripcion="Procesador de 12ª generación para gaming con 6 núcleos y 12 hilos. Excelente rendimiento en juegos y multitarea.",
-            imagen="https://via.placeholder.com/400x300/0066cc/ffffff?text=Intel+i5-12400F",
-            especificaciones='{"nucleos": 6, "hilos": 12, "frecuencia_base": "2.5 GHz", "frecuencia_boost": "4.4 GHz", "socket": "LGA 1700", "tdp": "65W"}',
-            stock=30
-        ),
-        Hardware(
-            tipo="CPU",
-            marca="AMD",
-            modelo="Ryzen 5 7600X",
-            precio=299.99,
-            descripcion="Procesador Zen 4 para alto rendimiento con arquitectura de 5nm. Ideal para gaming y creación de contenido.",
-            imagen="https://via.placeholder.com/400x300/ed1c24/ffffff?text=AMD+Ryzen+5",
-            especificaciones='{"nucleos": 6, "hilos": 12, "frecuencia_base": "4.7 GHz", "frecuencia_boost": "5.3 GHz", "socket": "AM5", "tdp": "105W"}',
-            stock=25
-        ),
-        Hardware(
-            tipo="GPU",
-            marca="NVIDIA",
-            modelo="RTX 4060",
-            precio=399.99,
-            descripcion="Tarjeta gráfica con Ray Tracing y DLSS 3. Perfecta para gaming en 1080p y 1440p con alto rendimiento.",
-            imagen="https://via.placeholder.com/400x300/76b900/ffffff?text=RTX+4060",
-            especificaciones='{"memoria": "8 GB GDDR6", "consumo": "115W", "puertos": "HDMI, DisplayPort x3", "cuda_cores": 3072}',
-            stock=20
-        ),
-        Hardware(
-            tipo="GPU",
-            marca="AMD",
-            modelo="RX 7600",
-            precio=349.99,
-            descripcion="Radeon con arquitectura RDNA 3. Excelente rendimiento por precio para gaming en 1080p.",
-            imagen="https://via.placeholder.com/400x300/ed1c24/ffffff?text=RX+7600",
-            especificaciones='{"memoria": "8 GB GDDR6", "consumo": "165W", "puertos": "HDMI, DisplayPort x3", "stream_processors": 2048}',
-            stock=18
-        ),
-        Hardware(
-            tipo="RAM",
-            marca="Corsair",
-            modelo="Vengeance LPX 16GB DDR4",
-            precio=89.99,
-            descripcion="Memoria de alto rendimiento para gaming con perfil bajo. Compatible con la mayoría de motherboards.",
-            imagen="https://via.placeholder.com/400x300/ffcc00/333333?text=Corsair+RAM+16GB",
-            especificaciones='{"capacidad": "16 GB", "tipo": "DDR4", "frecuencia": "3200 MHz", "latencia": "CL16", "modulos": "2x8GB"}',
-            stock=50
-        ),
-        Hardware(
-            tipo="RAM",
-            marca="G.Skill",
-            modelo="Trident Z RGB 32GB DDR4",
-            precio=159.99,
-            descripcion="Memoria RGB premium para entusiastas con iluminación personalizable y alto rendimiento.",
-            imagen="https://via.placeholder.com/400x300/ff0000/ffffff?text=G.Skill+RAM+32GB",
-            especificaciones='{"capacidad": "32 GB", "tipo": "DDR4", "frecuencia": "3600 MHz", "latencia": "CL18", "modulos": "2x16GB"}',
-            stock=35
-        ),
-        Hardware(
-            tipo="Motherboard",
-            marca="ASUS",
-            modelo="ROG Strix B450-F Gaming",
-            precio=129.99,
-            descripcion="Placa base ATX para AMD con soporte para Ryzen. Excelente para builds gaming de gama media.",
-            imagen="https://via.placeholder.com/400x300/ff6600/ffffff?text=ASUS+B450",
-            especificaciones='{"socket": "AM4", "formato": "ATX", "slots_ram": 4, "slots_pcie": "2 x PCIe 3.0 x16", "chipset": "B450"}',
-            stock=15
-        ),
-        Hardware(
-            tipo="Motherboard",
-            marca="MSI",
-            modelo="MAG B660M Mortar WiFi",
-            precio=149.99,
-            descripcion="Placa base micro-ATX para Intel con WiFi integrado. Perfecta para builds compactas.",
-            imagen="https://via.placeholder.com/400x300/000000/ffffff?text=MSI+B660M",
-            especificaciones='{"socket": "LGA 1700", "formato": "Micro-ATX", "slots_ram": 4, "slots_pcie": "1 x PCIe 4.0 x16", "chipset": "B660"}',
-            stock=20
-        )
-    ]
+    hardware_items = hardware_inicial()
     
     for hardware in hardware_items:
         db.session.add(hardware)

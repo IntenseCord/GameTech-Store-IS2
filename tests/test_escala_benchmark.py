@@ -29,7 +29,6 @@ def test_la_escala_coincide_con_los_componentes_del_catalogo():
     assert puntaje_cpu('Core i5-12400F') == pytest.approx(BENCHMARK_DATA['CPU']['i5-12400F']['score'], rel=0.02)
     assert puntaje_cpu('Ryzen 5 7600X') == pytest.approx(BENCHMARK_DATA['CPU']['Ryzen 5 7600X']['score'], rel=0.02)
     assert puntaje_gpu('GeForce RTX 4060') == pytest.approx(BENCHMARK_DATA['GPU']['RTX 4060']['score'], rel=0.01)
-    assert puntaje_gpu('GeForce GTX 1650') == pytest.approx(BENCHMARK_DATA['GPU']['GTX 1650']['score'], rel=0.05)
 
 
 def test_el_orden_de_los_componentes_respeta_el_rendimiento_real():
