@@ -59,15 +59,19 @@ function cuerpoDeConfiguracion(seleccion, slots) {
     return cuerpo;
 }
 
-async function verificarConfiguracion(cuerpo) {
+async function postJson(url, cuerpo) {
     const csrf = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
-    const respuesta = await fetch('/api/verificar-configuracion', {
+    const respuesta = await fetch(url, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'X-CSRFToken': csrf },
         body: JSON.stringify(cuerpo),
     });
     if (!respuesta.ok) {
-        throw new Error('No se pudo verificar la configuración');
+        throw new Error(`Error ${respuesta.status} en ${url}`);
     }
     return respuesta.json();
+}
+
+function verificarConfiguracion(cuerpo) {
+    return postJson('/api/verificar-configuracion', cuerpo);
 }

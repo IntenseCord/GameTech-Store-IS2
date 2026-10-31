@@ -1,6 +1,10 @@
+import math
+from types import SimpleNamespace
+
 from flask import Blueprint, render_template, request, jsonify, current_app
 from extensions import db
-from models.database_models import Hardware
+from models.database_models import Game, GameRequirements, Hardware
+from utils.asesor import PERFILES, armar_pc
 from utils.compatibilidad import CAMPOS_POR_TIPO, estado_general, verificar_configuracion
 from utils.hardware_engine import detectar_cuello, nivel_del_sistema, puntuacion_total, recomendaciones, sistema_de
 
@@ -56,7 +60,8 @@ def espacios_del_configurador():
 @hardware_bp.route('/configurador-pc')
 def configurador_pc():
     """Página del configurador de PC interactivo"""
-    return render_template('pc_builder.html', slots=espacios_del_configurador())
+    perfiles = [{'clave': clave, 'etiqueta': perfil['etiqueta']} for clave, perfil in PERFILES.items()]
+    return render_template('pc_builder.html', slots=espacios_del_configurador(), perfiles=perfiles)
 
 
 @hardware_bp.route('/api/verificar-configuracion', methods=['POST'])
@@ -106,6 +111,41 @@ def api_verificar_configuracion():
     except Exception:
         current_app.logger.exception('Error en api_verificar_configuracion')
         return jsonify({'error': 'Error del servidor al verificar la configuración'}), 500
+
+
+def _pieza_a_json(pieza):
+    return {'id': pieza.id, 'marca': pieza.marca, 'modelo': pieza.modelo, 'precio': float(pieza.precio), 'imagen': pieza.imagen}
+
+
+@hardware_bp.route('/api/armar-pc', methods=['POST'])
+def api_armar_pc():
+    """SmartBuildAdvisor: la mejor PC compatible del catálogo para un presupuesto y un uso (lo decide utils/asesor.py)."""
+    datos = request.get_json(silent=True)
+    if not isinstance(datos, dict):
+        return jsonify({'error': 'No se recibieron datos'}), 400
+    uso = datos.get('uso')
+    if uso not in PERFILES:
+        return jsonify({'error': f'Uso no válido; elige uno de: {", ".join(PERFILES)}'}), 400
+    presupuesto = datos.get('presupuesto')
+    if isinstance(presupuesto, bool) or not isinstance(presupuesto, (int, float, str)):
+        return jsonify({'error': 'El presupuesto debe ser un número'}), 400
+    try:
+        presupuesto = float(presupuesto)
+    except ValueError:
+        return jsonify({'error': 'El presupuesto debe ser un número'}), 400
+    if not math.isfinite(presupuesto) or presupuesto <= 0:
+        return jsonify({'error': 'El presupuesto debe ser mayor que cero'}), 400
+
+    try:
+        requisitos = {r.game_id: r for r in GameRequirements.query.all()}
+        juegos = [SimpleNamespace(nombre=g.nombre, genero=g.genero, requisitos=requisitos.get(g.id)) for g in Game.get_all_games()]
+        resultado = armar_pc(Hardware.get_all_hardware(), juegos, presupuesto, uso)
+        if resultado['ok']:
+            resultado['piezas'] = {tipo: _pieza_a_json(pieza) for tipo, pieza in resultado['piezas'].items()}
+        return jsonify({'success': True, **resultado})
+    except Exception:
+        current_app.logger.exception('Error en api_armar_pc')
+        return jsonify({'error': 'Error del servidor al armar la PC'}), 500
 
 
 @hardware_bp.route('/api/hardware/tipos')

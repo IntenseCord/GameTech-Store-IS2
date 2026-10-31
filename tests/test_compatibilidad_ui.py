@@ -199,3 +199,37 @@ def test_un_componente_sin_verificacion_no_muestra_un_boton_que_no_funciona(clie
     db.session.commit()
     html = client.get(f'/hardware/{extra.id}').get_data(as_text=True)
     assert 'check-compatibility-btn' not in html and 'todavía no tiene verificación' in html
+
+
+# ------------------------------------------------------------- el asesor en el configurador
+@necesita_node
+def test_la_seleccion_del_asesor_se_arma_con_los_componentes_ya_cargados():
+    datos = {'CPU': [{'id': 3, 'modelo': 'a'}, {'id': 4, 'modelo': 'b'}], 'GPU': [{'id': 5, 'modelo': 'c'}]}
+    piezas = {'CPU': {'id': 4}, 'GPU': {'id': 5}, 'RAM': {'id': 9}}           # la RAM no está cargada: se omite
+    [seleccion] = _js(f'seleccionDeAsesor({json.dumps(piezas)}, {json.dumps(datos)})', archivos=('compatibilidad.js', 'pc_builder.js'))
+    assert seleccion == {'CPU': {'id': 4, 'modelo': 'b'}, 'GPU': {'id': 5, 'modelo': 'c'}}
+
+
+@necesita_node
+def test_el_resultado_del_asesor_se_pinta_escapado_y_con_el_siguiente_nivel():
+    ok = {'ok': True, 'resumen': 'PC <b>lista</b>', 'siguiente': {'texto': 'Con $100.00 más subirías <i>un nivel</i>'}}
+    [html, sin_siguiente] = _js(f'htmlAsesor({json.dumps(ok)})', f'htmlAsesor({json.dumps({**ok, "siguiente": None})})',
+                                archivos=('compatibilidad.js', 'pc_builder.js'))
+    assert '<b>' not in html and '&lt;b&gt;lista' in html and '&lt;i&gt;un nivel' in html
+    assert 'subirías' not in sin_siguiente
+
+
+@necesita_node
+def test_si_el_presupuesto_no_alcanza_se_muestra_el_motivo_del_servidor():
+    [html] = _js(f'htmlAsesor({json.dumps({"ok": False, "motivo": "No alcanza <script>x</script> $704.93"})})',
+                 archivos=('compatibilidad.js', 'pc_builder.js'))
+    assert '704.93' in html and '<script>' not in html and 'alert-warning' in html
+
+
+def test_el_configurador_ofrece_presupuesto_uso_y_el_boton_de_armar(client, app_context):
+    sincronizar_hardware()
+    html = client.get('/configurador-pc').get_data(as_text=True)
+    assert 'id="presupuesto-select"' in html and 'id="uso-select"' in html and 'id="armar-pc-btn"' in html
+    for clave in ('gaming', 'esports', 'aaa'):
+        assert f'value="{clave}"' in html
+    assert 'eSports' in html and 'AAA' in html

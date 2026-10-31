@@ -32,6 +32,27 @@ function htmlRecomendaciones(lista) {
     return `<ul class="list-unstyled mb-0">${lista.map(t => `<li class="mb-1">${escapeHtml(t)}</li>`).join('')}</ul>`;
 }
 
+// {tipo: {id}} del asesor -> {tipo: componente completo} con los datos ya cargados en la página.
+function seleccionDeAsesor(piezas, datos) {
+    const seleccion = {};
+    for (const [tipo, pieza] of Object.entries(piezas || {})) {
+        const componente = (datos[tipo] || []).find(c => c.id === pieza.id);
+        if (componente) {
+            seleccion[tipo] = componente;
+        }
+    }
+    return seleccion;
+}
+
+function htmlAsesor(resultado) {
+    if (!resultado.ok) {
+        return `<div class="alert alert-warning mb-0"><i class="fas fa-coins me-2"></i>${escapeHtml(resultado.motivo)}</div>`;
+    }
+    const siguiente = resultado.siguiente
+        ? `<p class="mb-0 mt-2 small text-muted"><i class="fas fa-arrow-up me-1"></i>${escapeHtml(resultado.siguiente.texto)}</p>` : '';
+    return `<div class="alert alert-success mb-0"><i class="fas fa-magic me-2"></i>${escapeHtml(resultado.resumen)}${siguiente}</div>`;
+}
+
 function textoNivel(rendimiento) {
     return rendimiento ? rendimiento.nivel : 'Sin componentes';
 }
@@ -151,6 +172,33 @@ async function actualizarConfiguracion() {
     }
 }
 
+// ------------------------------------------------------------------------ asesor
+async function armarPc() {
+    const boton = document.getElementById('armar-pc-btn');
+    const salida = document.getElementById('asesor-resultado');
+    boton.disabled = true;
+    salida.innerHTML = '<div class="text-center"><span class="spinner-border spinner-border-sm"></span></div>';
+    try {
+        const resultado = await postJson('/api/armar-pc', {
+            presupuesto: Number(document.getElementById('presupuesto-select').value),
+            uso: document.getElementById('uso-select').value,
+        });
+        salida.innerHTML = htmlAsesor(resultado);
+        if (resultado.ok) {
+            const seleccion = seleccionDeAsesor(resultado.piezas, componentsData);
+            for (const slot of slotsDelConfigurador()) {
+                currentBuild[slot.tipo] = seleccion[slot.tipo] || null;
+                updateComponentSlot(slot.tipo, currentBuild[slot.tipo]);
+            }
+            await actualizarConfiguracion();
+        }
+    } catch (error) {
+        salida.innerHTML = '<div class="alert alert-danger mb-0">No se pudo armar la PC. Inténtalo de nuevo.</div>';
+    } finally {
+        boton.disabled = false;
+    }
+}
+
 // ------------------------------------------------------------------------- compra
 async function finalizeBuild() {
     if (window.estadoDeLaConfiguracion === 'incompatible'
@@ -187,6 +235,7 @@ async function finalizeBuild() {
 document.addEventListener('DOMContentLoaded', function () {
     loadComponentsData();
     document.getElementById('finalize-build-btn').addEventListener('click', finalizeBuild);
+    document.getElementById('armar-pc-btn').addEventListener('click', armarPc);
     document.addEventListener('click', function (e) {
         const abrir = e.target.closest('[data-slot-tipo]');
         const elegir = e.target.closest('[data-elegir-id]');
