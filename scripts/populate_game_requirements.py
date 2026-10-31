@@ -62,6 +62,31 @@ REFERENCIAS_POR_JUEGO = {
         'ultra': {'cpu': 'Core i5-8400', 'gpu': 'GeForce GTX 1070', 'ram_gb': 16, 'vram_gb': 6, 'origen': 'proyecto',
                   'fuente': 'criterio del proyecto: 1440p alto con muchos FPS'},
     },
+    # Los tres siguientes: mínimo y recomendado de la ficha de Steam (consultada el 2026-10-30)
+    'Red Dead Redemption 2': {
+        'min': {'cpu': 'Core i5-2500K', 'gpu': 'GeForce GTX 770', 'ram_gb': 8, 'vram_gb': 2, 'origen': 'publicado',
+                'fuente': 'Rockstar (Steam): i5-2500K, GTX 770 2 GB, 8 GB'},
+        'rec': {'cpu': 'Core i7-4770K', 'gpu': 'GeForce GTX 1060', 'ram_gb': 12, 'vram_gb': 6, 'origen': 'publicado',
+                'fuente': 'Rockstar (Steam): i7-4770K, GTX 1060 6 GB, 12 GB'},
+        'ultra': {'cpu': 'Core i7-8700K', 'gpu': 'GeForce GTX 1080 Ti', 'ram_gb': 16, 'vram_gb': 11, 'origen': 'proyecto',
+                  'fuente': 'criterio del proyecto: 1440p en ajustes altos con ~60 FPS'},
+    },
+    "Baldur's Gate 3": {
+        'min': {'cpu': 'Core i5-4690', 'gpu': 'GeForce GTX 970', 'ram_gb': 8, 'vram_gb': 4, 'origen': 'publicado',
+                'fuente': 'Larian (Steam): i5-4690, GTX 970 (4 GB o más de VRAM), 8 GB, SSD obligatorio'},
+        'rec': {'cpu': 'Ryzen 5 3600', 'gpu': 'GeForce RTX 2060 Super', 'ram_gb': 16, 'vram_gb': 8, 'origen': 'publicado',
+                'fuente': 'Larian (Steam): Ryzen 5 3600 (o i7-8700K), RTX 2060 Super (8 GB o más de VRAM), 16 GB'},
+        'ultra': {'cpu': 'Core i7-8700K', 'gpu': 'GeForce GTX 1080 Ti', 'ram_gb': 16, 'vram_gb': 11, 'origen': 'proyecto',
+                  'fuente': 'criterio del proyecto: 1440p en ultra; el acto 3 exige más CPU que GPU'},
+    },
+    'Apex Legends': {
+        'min': {'cpu': 'Core i3-6300', 'gpu': 'GeForce GTX 950', 'ram_gb': 6, 'vram_gb': 2, 'origen': 'publicado',
+                'fuente': 'Respawn (Steam): i3-6300, GTX 950 / HD 7790 2 GB, 6 GB'},
+        'rec': {'cpu': 'Ryzen 5 3600', 'gpu': 'GeForce GTX 970', 'ram_gb': 8, 'vram_gb': 4, 'origen': 'publicado',
+                'fuente': 'Respawn (Steam): "Ryzen 5 o equivalente" sin modelo (se usa el 3600, criterio del proyecto), GTX 970 / R9 290, 8 GB'},
+        'ultra': {'cpu': 'Core i7-8700K', 'gpu': 'GeForce GTX 1070', 'ram_gb': 16, 'vram_gb': 8, 'origen': 'proyecto',
+                  'fuente': 'criterio del proyecto: 1440p alto con FPS altos (juego competitivo)'},
+    },
 }
 
 EXTRAS_POR_JUEGO = {
@@ -70,6 +95,9 @@ EXTRAS_POR_JUEGO = {
     'The Witcher 3': {'storage_gb': 50, 'directx_version': 'DX11', 'requires_ssd': False},
     'Grand Theft Auto V': {'storage_gb': 72, 'directx_version': 'DX11', 'requires_ssd': False},
     'Counter-Strike 2': {'storage_gb': 85, 'directx_version': 'DX11', 'requires_ssd': False},
+    'Red Dead Redemption 2': {'storage_gb': 150, 'directx_version': 'DX12', 'requires_ssd': False},
+    "Baldur's Gate 3": {'storage_gb': 150, 'directx_version': 'DX11', 'requires_ssd': True},
+    'Apex Legends': {'storage_gb': 75, 'directx_version': 'DX12', 'requires_ssd': False},
 }
 
 
