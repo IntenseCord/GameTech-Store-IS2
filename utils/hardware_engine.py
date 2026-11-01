@@ -124,7 +124,7 @@ def nivel_del_sistema(total):
 # -------------------------------------------------------------------- juegos
 def _sin_datos(motivo):
     return {'estado': SIN_DATOS, 'puede_correr': None, 'calidad': None, 'fps': 0,
-            'limitante': None, 'motivo': motivo, 'parcial': False}
+            'limitante': None, 'motivo': motivo, 'parcial': False, 'vram_necesaria': None}
 
 
 def _vram_exigida(req, nivel):
@@ -230,8 +230,10 @@ def evaluar_juego(sistema, req):
     fallos = _fallos_del_minimo(sistema, req)
     if fallos:
         limitante = min(fallos, key=lambda f: f[1])[0]
+        falta_vram = any(f[0] == 'vram' for f in fallos)
         return {'estado': 'ok', 'puede_correr': False, 'calidad': 'none', 'fps': 0, 'limitante': limitante,
-                'motivo': ' | '.join(f[2] for f in fallos), 'parcial': parcial}
+                'motivo': ' | '.join(f[2] for f in fallos), 'parcial': parcial,
+                'vram_necesaria': _vram_exigida(req, 'min') if falta_vram else None}
 
     if sistema.desconocidos:
         # Lo que se conoce cumple el mínimo, pero falta saber si el componente desconocido también: no se confirma.
@@ -248,7 +250,7 @@ def evaluar_juego(sistema, req):
         motivo = ''
     return {'estado': 'ok', 'puede_correr': True, 'calidad': calidad,
             'fps': _fps(sistema, calidad, exigido_cpu, exigido_gpu),
-            'limitante': limitante, 'motivo': motivo, 'parcial': parcial}
+            'limitante': limitante, 'motivo': motivo, 'parcial': parcial, 'vram_necesaria': vram_necesaria or None}
 
 
 CATEGORIA_POR_CALIDAD = {'ultra': 'can_run_ultra', 'high': 'can_run_high', 'medium': 'can_run_medium',
