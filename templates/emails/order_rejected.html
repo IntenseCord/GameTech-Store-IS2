@@ -106,7 +106,7 @@
 
             <div class="order-info">
                 <strong>Orden #{{ order.id }}</strong><br>
-                Fecha: {{ order.created_at.strftime('%d/%m/%Y %H:%M') }}
+                Fecha: {{ order.created_at|fecha_local('%d/%m/%Y %H:%M') }}
             </div>
 
             <table>

@@ -50,7 +50,7 @@
                                 <tr>
                                     <td>#{{ order.id }}</td>
                                     <td>{{ order.user.username }}</td>
-                                    <td>{{ order.created_at.strftime('%d/%m/%Y %H:%M') }}</td>
+                                    <td>{{ order.created_at|fecha_local('%d/%m/%Y %H:%M') }}</td>
                                     <td>${{ "%.2f"|format(order.total) }}</td>
                                     <td>
                                         <span class="badge bg-{{ 'success' if order.status in ('completed', 'approved') else 'warning' if order.status == 'pending' else 'danger' }}">

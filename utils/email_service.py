@@ -6,6 +6,7 @@ from flask import render_template, url_for, current_app
 from extensions import mail
 import secrets
 from datetime import datetime, timedelta, timezone
+from utils.fechas import ahora_utc
 
 def generate_verification_token():
     """Generar un token único para verificación"""
@@ -110,7 +111,7 @@ El equipo de GameTech Store
 
 def get_token_expiry():
     """Obtener fecha de expiración del token (24 horas)"""
-    return datetime.now() + timedelta(hours=24)
+    return ahora_utc() + timedelta(hours=24)
 
 def get_login_verification_expiry():
     """Obtener fecha de expiración del token de reverificación de login (30 minutos)"""

@@ -59,7 +59,7 @@
                                         </td>
                                         <td><small>{{ user.email }}</small></td>
                                         <td class="text-center">
-                                            <small>{{ user.created_at.strftime('%d/%m/%Y') }}</small>
+                                            <small>{{ user.created_at|fecha_local('%d/%m/%Y') }}</small>
                                         </td>
                                         <td class="text-center">
                                             {% if user.is_active %}

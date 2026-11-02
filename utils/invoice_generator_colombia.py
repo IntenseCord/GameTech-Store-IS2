@@ -10,6 +10,7 @@ from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
 from reportlab.lib.enums import TA_CENTER
 import os
 import qrcode
+from utils.fechas import formatear_local
 from io import BytesIO
 
 class InvoiceGeneratorColombia:
@@ -108,7 +109,7 @@ class InvoiceGeneratorColombia:
         info_data = [
             ['INFORMACIÓN DE LA FACTURA', 'DATOS DEL RECEPTOR'],
             [f'Folio: {invoice.folio}', f'NIT/CC: {invoice.nit_receptor}'],
-            [f'Fecha: {invoice.fecha_emision.strftime("%d/%m/%Y %H:%M")}', f'Razón Social: {invoice.razon_social_receptor}'],
+            [f'Fecha: {formatear_local(invoice.fecha_emision)}', f'Razón Social: {invoice.razon_social_receptor}'],
             [f'CUFE: {invoice.cufe[:20]}...', f'Dirección: {invoice.direccion_fiscal or "N/A"}'],
             ['Moneda: COP', f'Ciudad: {invoice.ciudad or "N/A"}'],
             [f'Forma de Pago: {invoice.forma_pago}', f'Departamento: {invoice.departamento or "N/A"}'],

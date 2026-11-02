@@ -11,7 +11,7 @@ from utils.invoice_generator_colombia import InvoiceGeneratorColombia as Invoice
 from utils.email_sender import enviar_factura_por_email
 from utils.error_handling import log_db_error
 import os
-from datetime import datetime
+from utils.fechas import ahora_utc
 
 CART_ORDENES = 'cart.mis_ordenes'
 VER_FACTURA = 'invoice.ver_factura'
@@ -124,7 +124,7 @@ def _crear_objeto_factura(order, datos):
         order_id=order.id,
         user_id=current_user.id,
         folio=f'FE-{order.id:06d}',
-        fecha_emision=datetime.now(),
+        fecha_emision=ahora_utc(),
         nit_receptor=datos['nit'] or '000000000',
         tipo_documento_receptor=datos['tipo_documento'] or '31',
         razon_social_receptor=datos['razon_social'] or 'Cliente General',
@@ -147,7 +147,7 @@ def _crear_objeto_factura(order, datos):
     )
 
 def _generar_pdf_factura(invoice, order):
-    temp_id = f"{order.id}-{datetime.now().strftime('%Y%m%d%H%M%S')}"
+    temp_id = f"{order.id}-{ahora_utc().strftime('%Y%m%d%H%M%S')}"
     pdf_filename = f'factura_{invoice.folio}_{temp_id}.pdf'
     pdf_dir = os.path.join('static', 'invoices', 'pdf')
     os.makedirs(pdf_dir, exist_ok=True)
@@ -219,7 +219,7 @@ def cancelar_factura(invoice_id):
         return redirect(url_for(VER_FACTURA, invoice_id=invoice_id))
 
     invoice.status = 'cancelled'
-    invoice.fecha_cancelacion = datetime.now()
+    invoice.fecha_cancelacion = ahora_utc()
     db.session.commit()
     
     flash('Factura cancelada exitosamente', 'success')

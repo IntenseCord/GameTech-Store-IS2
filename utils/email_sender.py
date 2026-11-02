@@ -4,6 +4,7 @@ Utilidad para enviar correos electrónicos
 from flask_mail import Message
 from flask import current_app
 from extensions import mail
+from utils.fechas import formatear_local
 import os
 
 def enviar_factura_por_email(invoice, user, pdf_path):
@@ -111,7 +112,7 @@ def enviar_factura_por_email(invoice, user, pdf_path):
                         
                         <div class="detail-row">
                             <span class="detail-label">Fecha de Emisión:</span>
-                            <span>{invoice.fecha_emision.strftime('%d/%m/%Y %H:%M')}</span>
+                            <span>{formatear_local(invoice.fecha_emision)}</span>
                         </div>
                         
                         <div class="detail-row">

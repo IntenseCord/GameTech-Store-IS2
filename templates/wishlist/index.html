@@ -44,7 +44,7 @@
                             <p class="card-text">
                                 <small class="text-muted">
                                     <i class="fas fa-clock me-1"></i>
-                                    Agregado: {{ item.added_at.strftime('%d/%m/%Y') }}
+                                    Agregado: {{ item.added_at|fecha_local('%d/%m/%Y') }}
                                 </small>
                             </p>
                         </div>

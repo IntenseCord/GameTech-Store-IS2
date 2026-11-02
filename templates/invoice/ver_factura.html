@@ -83,11 +83,11 @@
                             </tr>
                             <tr>
                                 <td class="bg-light"><strong>Fecha Emisión:</strong></td>
-                                <td>{{ invoice.fecha_emision.strftime('%d/%m/%Y %H:%M:%S') }}</td>
+                                <td>{{ invoice.fecha_emision|fecha_local('%d/%m/%Y %H:%M:%S') }}</td>
                             </tr>
                             <tr>
                                 <td class="bg-light"><strong>Fecha Validación DIAN:</strong></td>
-                                <td>{{ invoice.fecha_validacion_dian.strftime('%d/%m/%Y %H:%M:%S') }}</td>
+                                <td>{{ invoice.fecha_validacion_dian|fecha_local('%d/%m/%Y %H:%M:%S') }}</td>
                             </tr>
                             <tr>
                                 <td class="bg-light"><strong>Método de Pago:</strong></td>

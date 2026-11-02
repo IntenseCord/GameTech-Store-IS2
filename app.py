@@ -17,6 +17,7 @@ from config import config, Config
 from extensions import db, mail, login_manager, migrate
 from database import seed_database
 from models.database_models import Game, Hardware, User, CartItem
+from utils.fechas import formatear_local
 from utils.rate_limiter import init_limiter
 from utils.security_headers import add_security_headers
 from utils.sentry_config import init_sentry
@@ -47,6 +48,9 @@ os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
 # Inicializar CSRF protection
 csrf = CSRFProtect(app)
 app.logger.info('✅ CSRF Protection habilitado')
+
+# Las fechas se guardan en UTC y las plantillas las muestran en hora de Bogotá con este filtro (utils/fechas.py)
+app.add_template_filter(formatear_local, 'fecha_local')
 
 # Inicializar extensiones
 db.init_app(app)
