@@ -9,7 +9,7 @@ from dotenv import load_dotenv
 # perezosa), así que si .env se carga después esos valores quedan en None.
 load_dotenv()
 
-from flask import Flask, render_template, request
+from flask import Flask, redirect, render_template, request
 from flask_login import current_user
 from flask_wtf.csrf import CSRFProtect
 
@@ -133,6 +133,11 @@ def index():
 def about():
     """Página acerca de"""
     return render_template('about.html')
+
+@app.route('/favicon.ico')
+def favicon():
+    """Los clientes que piden /favicon.ico por costumbre reciben el mismo ícono SVG de la base"""
+    return redirect('/static/favicon.svg', code=301)
 
 @app.errorhandler(404)
 def page_not_found(error):
