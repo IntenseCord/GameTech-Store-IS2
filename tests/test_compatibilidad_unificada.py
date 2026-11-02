@@ -193,11 +193,11 @@ def test_componente_sin_puntaje_no_inventa_un_nivel_ni_dice_balanceado(client, e
 def test_contrato_json_del_analizador(client, equipos, juego):
     r = _analizar(client, equipos['cpu_fuerte'], equipos['gpu_fuerte'], equipos['ram_32']).get_json()
 
-    assert set(r) == {'success', 'system_score', 'bottlenecks', 'games', 'recommendations'}
+    assert set(r) == {'success', 'system_score', 'bottlenecks', 'games', 'recommendations', 'upgrades'}
     assert set(r['games']) == {'can_run_ultra', 'can_run_high', 'can_run_medium', 'can_run_low', 'cannot_run', 'sin_datos'}
     assert {'total', 'cpu_score', 'gpu_score', 'ram_score', 'ram_gb', 'tier', 'components', 'faltantes'} <= set(r['system_score'])
     assert r['system_score']['total'] == 17080 and r['system_score']['tier'] == 'Ultra High-End (4K Ultra)'
-    assert set(r['games']['can_run_ultra'][0]) == {'id', 'nombre', 'imagen', 'precio', 'expected_fps', 'quality', 'bottleneck', 'reason'}
+    assert set(r['games']['can_run_ultra'][0]) == {'id', 'nombre', 'imagen', 'precio', 'expected_fps', 'quality', 'bottleneck', 'reason', 'vram_needed'}
 
 
 def test_un_error_interno_ya_no_se_traga_en_silencio_ni_se_filtra_al_cliente(client, equipos, juego, monkeypatch):

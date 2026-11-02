@@ -11,6 +11,7 @@ from utils.hardware_engine import (
     SIN_DATOS, categoria_de, detectar_cuello, evaluar_juego, nivel_del_sistema, puntuacion_total,
     recomendaciones, sistema_de,
 )
+from utils.recomendador import recomendar_mejoras
 
 analyzer_bp = Blueprint('analyzer', __name__)
 
@@ -62,13 +63,16 @@ def analyze_hardware():
 
         sistema = sistema_de(cpu, gpu, ram)
         cuello = detectar_cuello(sistema)
+        juegos = _clasificar_juegos(sistema)
 
         return jsonify({
             'success': True,
             'system_score': _puntuacion_del_sistema(sistema, cpu, gpu, ram),
             'bottlenecks': cuello,
-            'games': _clasificar_juegos(sistema),
+            'games': juegos,
             'recommendations': recomendaciones(sistema, cuello),
+            'upgrades': _mejoras_a_json(recomendar_mejoras(cpu, gpu, ram, Hardware.get_all_hardware(),
+                                                           vram_necesaria=_vram_que_piden(juegos))),
         })
 
     except Exception as e:
@@ -96,6 +100,25 @@ def _puntuacion_del_sistema(sistema, cpu, gpu, ram):
     }
 
 
+def _vram_que_piden(juegos):
+    """La mayor VRAM que piden los juegos que el equipo no alcanza por falta de VRAM (None si ninguno)."""
+    pedidas = [j['vram_needed'] for grupo in juegos.values() for j in grupo if j['vram_needed']]
+    return max(pedidas) if pedidas else None
+
+
+def _mejoras_a_json(recomendaciones):
+    """Las recomendaciones del motor sin objetos del modelo: cada opción lleva id, marca, modelo y precio."""
+    resultado = []
+    for r in recomendaciones:
+        opciones = []
+        for o in r['opciones']:
+            pieza = o['pieza']
+            opciones.append({**{k: v for k, v in o.items() if k != 'pieza'}, 'id': pieza.id, 'marca': pieza.marca,
+                             'modelo': pieza.modelo})
+        resultado.append({'tipo': r['tipo'], 'motivo': r['motivo'], 'opciones': opciones})
+    return resultado
+
+
 def _clasificar_juegos(sistema):
     """Agrupa los juegos por la calidad que alcanza el equipo (o `sin_datos` si no se puede saber)."""
     grupos = {'can_run_ultra': [], 'can_run_high': [], 'can_run_medium': [], 'can_run_low': [],
@@ -113,5 +136,6 @@ def _clasificar_juegos(sistema):
             'quality': evaluacion['calidad'] or SIN_DATOS,
             'bottleneck': evaluacion['limitante'],
             'reason': evaluacion['motivo'],
+            'vram_needed': evaluacion['vram_necesaria'],
         })
     return grupos

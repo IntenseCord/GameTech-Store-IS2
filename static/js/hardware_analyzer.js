@@ -101,6 +101,7 @@ function displayResults(data) {
     displaySystemScore(data.system_score);
     displayBottlenecks(data.bottlenecks);
     displayRecommendations(data.recommendations);
+    displayUpgrades(data.upgrades);
     displayGameCompatibility(data.games);
     
     // Mostrar contenedor de resultados
@@ -254,6 +255,45 @@ function displayRecommendations(recommendations) {
 /**
  * Mostrar compatibilidad con juegos
  */
+/**
+ * Piezas concretas del catálogo que mejoran el equipo, ordenadas por mejor relación precio/rendimiento
+ * (las calcula el servidor con el motor; aquí solo se pintan, con todo el texto escapado).
+ */
+function displayUpgrades(upgrades) {
+    const container = document.getElementById('upgrades-container');
+    if (!upgrades || upgrades.length === 0) {
+        container.innerHTML = '<p class="text-muted mb-0"><i class="fas fa-check-circle text-success me-2"></i>Tu equipo no necesita mejoras por ahora.</p>';
+        return;
+    }
+    container.innerHTML = upgrades.map(u => `
+        <div class="mb-4">
+            <h6 class="fw-bold">${escapeHtml(u.tipo)}</h6>
+            <p class="text-muted">${escapeHtml(u.motivo)}</p>
+            <div class="row g-3">${u.opciones.map(o => renderUpgradeOption(o, u.opciones.length > 1)).join('')}</div>
+        </div>`).join('');
+}
+
+function renderUpgradeOption(opcion, hayQueComparar) {
+    const etiquetas = [
+        opcion.mejor_relacion && hayQueComparar ? '<span class="badge bg-success me-1"><i class="fas fa-star me-1"></i>Mejor relación precio/rendimiento</span>' : '',
+        opcion.equilibra ? '' : '<span class="badge bg-warning text-dark me-1">No equilibra del todo</span>',
+    ].join('');
+    const avisos = (opcion.avisos || []).map(a => `<li>${escapeHtml(a)}</li>`).join('');
+    return `
+        <div class="col-md-4">
+            <div class="card h-100 ${opcion.mejor_relacion && hayQueComparar ? 'border-success' : ''}">
+                <div class="card-body">
+                    <div class="mb-2">${etiquetas}</div>
+                    <h6 class="card-title mb-1"><a href="/hardware/${Number(opcion.id)}">${escapeHtml(opcion.marca)} ${escapeHtml(opcion.modelo)}</a></h6>
+                    <p class="mb-1"><strong class="text-primary">$${Number(opcion.precio).toFixed(2)}</strong>
+                        <span class="badge bg-info ms-1">+${Number(opcion.mejora_pct)}%</span></p>
+                    <p class="small text-muted mb-2">${Number(opcion.puntos_por_dolar).toFixed(2)} pts/$</p>
+                    ${avisos ? `<ul class="small mb-0 ps-3">${avisos}</ul>` : ''}
+                </div>
+            </div>
+        </div>`;
+}
+
 function displayGameCompatibility(games) {
     // Actualizar contadores
     document.getElementById('ultra-count').textContent = games.can_run_ultra.length;
