@@ -140,7 +140,7 @@ def populate_game_requirements():
             
             if not game:
                 not_found.append(game_name)
-                print(f"⚠️  Juego no encontrado: {game_name}")
+                print(f"AVISO: Juego no encontrado: {game_name}")
                 continue
             
             # Verificar si ya existen requisitos
@@ -151,7 +151,7 @@ def populate_game_requirements():
                 for key, value in requirements_data.items():
                     setattr(existing_req, key, value)
                 updated_count += 1
-                print(f"🔄 Actualizado: {game.nombre}")
+                print(f"Actualizado: {game.nombre}")
             else:
                 # Crear nuevos requisitos
                 GameRequirements.create_requirements(
@@ -159,25 +159,25 @@ def populate_game_requirements():
                     **requirements_data
                 )
                 created_count += 1
-                print(f"✅ Creado: {game.nombre}")
+                print(f"Creado: {game.nombre}")
         
         print("\n" + "="*60)
-        print(f"✅ Requisitos creados: {created_count}")
-        print(f"🔄 Requisitos actualizados: {updated_count}")
+        print(f"Requisitos creados: {created_count}")
+        print(f"Requisitos actualizados: {updated_count}")
         print("="*60)
         
         if not_found:
-            print(f"\n⚠️  No se encontraron {len(not_found)} juegos:")
+            print(f"\nAVISO: No se encontraron {len(not_found)} juegos:")
             for game in not_found:
                 print(f"  - {game}")
-            print("\n💡 Estos juegos no están en la base de datos.")
+            print("\nNota: Estos juegos no están en la base de datos.")
             print("   Agrégalos primero si deseas incluir sus requisitos.")
 
 if __name__ == '__main__':
     try:
         populate_game_requirements()
     except Exception as e:
-        print(f"\n❌ Error fatal: {e}")
+        print(f"\nERROR fatal: {e}")
         import traceback
         traceback.print_exc()
         sys.exit(1)
