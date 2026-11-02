@@ -19,14 +19,24 @@
                         <i class="fas fa-times-circle fa-5x text-danger mb-4"></i>
                         <h2 class="mb-3">Tu pago no pudo procesarse</h2>
                         <p class="lead text-muted mb-4">
-                            MercadoPago rechazó el pago de esta orden. Puedes intentar de nuevo desde tu carrito.
+                            MercadoPago rechazó el pago de esta orden. No se realizó ningún cobro.
                         </p>
-                    {% else %}
+                    {% elif order.status == 'cancelled' %}
+                        <i class="fas fa-ban fa-5x text-secondary mb-4"></i>
+                        <h2 class="mb-3">Tu orden fue cancelada</h2>
+                        <p class="lead text-muted mb-4">
+                            Esta orden ya no está activa.
+                        </p>
+                    {% elif order.status in ('approved', 'completed') %}
                         <i class="fas fa-check-circle fa-5x text-success mb-4"></i>
                         <h2 class="mb-3">¡Compra Realizada con Éxito!</h2>
                         <p class="lead text-muted mb-4">
                             Tu orden ha sido procesada correctamente. Recibirás un email de confirmación en breve.
                         </p>
+                    {% else %}
+                        <i class="fas fa-info-circle fa-5x text-info mb-4"></i>
+                        <h2 class="mb-3">Estado de tu orden</h2>
+                        <p class="lead text-muted mb-4">Consulta el detalle de esta orden más abajo.</p>
                     {% endif %}
 
                     <div class="alert alert-info">
@@ -70,10 +80,26 @@
                 <div class="card-body">
                     <h5><i class="fas fa-info-circle me-2 text-primary"></i>¿Qué sigue?</h5>
                     <ul class="mb-0">
+                        {% if order.status in ('approved', 'completed') %}
                         <li>Recibirás un email de confirmación con los detalles de tu orden</li>
                         <li>Tu orden será procesada en las próximas 24 horas</li>
                         <li>Puedes rastrear tu orden desde tu perfil</li>
                         <li>El envío es completamente gratis</li>
+                        {% elif order.status == 'pending' %}
+                        <li>Estamos esperando la confirmación del pago en MercadoPago</li>
+                        <li>Te notificaremos por correo en cuanto se confirme</li>
+                        <li>Puedes consultar el estado de la orden en Mis Órdenes</li>
+                        {% elif order.status == 'rejected' %}
+                        <li>Te enviamos un correo avisando que el pago no pudo procesarse</li>
+                        <li>Esta orden quedó cerrada y no puede reactivarse</li>
+                        <li>Los productos volvieron a estar disponibles: puedes agregarlos de nuevo al carrito e intentar el pago otra vez</li>
+                        {% elif order.status == 'cancelled' %}
+                        <li>Los productos de esta orden volvieron al inventario</li>
+                        <li>Esta orden quedó cerrada y no puede reactivarse</li>
+                        <li>Si aún los quieres, puedes comprarlos de nuevo desde la tienda</li>
+                        {% else %}
+                        <li>Puedes consultar el estado de la orden en Mis Órdenes</li>
+                        {% endif %}
                     </ul>
                 </div>
             </div>
