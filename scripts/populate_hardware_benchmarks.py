@@ -93,12 +93,12 @@ def update_hardware_benchmarks():
             ).all()
             if not hardware_items:
                 not_found.append(f"{tipo}: {model_name}")
-                print(f"  ⚠️  No encontrado: {model_name}")
+                print(f"  AVISO: No encontrado: {model_name}")
                 return 0
             for hardware in hardware_items:
                 hardware.benchmark_score = specs['score']
                 update_hardware_properties(hardware, specs, tipo)
-                print(f"  ✅ {hardware.marca} {hardware.modelo} - Score: {specs['score']}")
+                print(f"  {hardware.marca} {hardware.modelo} - Score: {specs['score']}")
             return len(hardware_items)
 
         print("=" * 60)
@@ -107,38 +107,38 @@ def update_hardware_benchmarks():
         print()
 
         for tipo, components in BENCHMARK_DATA.items():
-            print(f"\n🔧 Procesando {tipo}s...")
+            print(f"\nProcesando {tipo}s...")
             for model_name, specs in components.items():
                 updated_count += process_component(tipo, model_name, specs)
 
         try:
             db.session.commit()
             print("\n" + "=" * 60)
-            print(f"✅ Total actualizado: {updated_count} componentes")
+            print(f"Total actualizado: {updated_count} componentes")
             print("=" * 60)
 
             show_not_found(not_found)
 
         except Exception as e:
             db.session.rollback()
-            print(f"\n❌ Error al guardar cambios: {e}")
+            print(f"\nERROR al guardar cambios: {e}")
             raise
 
 def show_not_found(not_found):
     if not_found:
-        print(f"\n⚠️  No se encontraron {len(not_found)} componentes:")
+        print(f"\nAVISO: No se encontraron {len(not_found)} componentes:")
         for item in not_found[:10]:
             print(f"  - {item}")
         if len(not_found) > 10:
             print(f"  ... y {len(not_found) - 10} más")
-        print("\n💡 Estos componentes no están en la base de datos.")
+        print("\nNota: Estos componentes no están en la base de datos.")
         print("   Agrégalos primero si deseas incluir sus benchmarks.")
 
 if __name__ == '__main__':
     try:
         update_hardware_benchmarks()
     except Exception as e:
-        print(f"\n❌ Error fatal: {e}")
+        print(f"\nERROR fatal: {e}")
         import traceback
         traceback.print_exc()
         sys.exit(1)
