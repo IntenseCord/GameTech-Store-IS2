@@ -15,7 +15,7 @@
                         <div class="row align-items-center">
                             <div class="col-md-2">
                                 <h5 class="mb-0">{{ invoice.folio }}</h5>
-                                <small class="text-muted">{{ invoice.fecha_emision.strftime('%d/%m/%Y') }}</small>
+                                <small class="text-muted">{{ invoice.fecha_emision|fecha_local('%d/%m/%Y') }}</small>
                             </div>
                             <div class="col-md-3">
                                 <small class="text-muted">NIT/CC:</small>
